@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Smart Campaign Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .channel-badge { display:inline-block; padding:2px 8px; border-radius:9999px; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+    .ch-Email      { background:#dbeafe; color:#1d4ed8; }
+    .ch-Meta       { background:#fce7f3; color:#9d174d; }
+    .ch-Google     { background:#fef3c7; color:#92400e; }
+    .ch-TikTok     { background:#f1f5f9; color:#334155; }
+    .ch-LinkedIn   { background:#dbeafe; color:#1e40af; }
+    .ch-TwitterX   { background:#e0f2fe; color:#0369a1; }
+    .ch-YouTube    { background:#fee2e2; color:#b91c1c; }
+    .ch-OrganicSEO { background:#d1fae5; color:#065f46; }
+    .ch-Partners   { background:#f3e8ff; color:#6b21a8; }
+    .ch-default    { background:#f1f5f9; color:#475569; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10">
+  <div class="max-w-3xl mx-auto flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-bold text-slate-900 leading-tight">Smart Campaign Builder</p>
+        <p class="text-xs text-slate-400">Prompt → smart links → clicks</p>
+      </div>
+    </a>
+    <a href="index.html" class="text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">+ New Campaign</a>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-6 py-10">
+  <div class="mb-4 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl px-4 py-2.5">
+    Demo mode — showing sample data. Campaign creation is disabled in this preview.
+  </div>
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Campaigns</h1>
+      <p id="subtitle" class="text-slate-500 mt-0.5 text-sm"></p>
+    </div>
+  </div>
+
+  <div id="loading" class="text-center py-16 text-slate-400 text-sm">Loading campaigns…</div>
+  <div id="campaigns-list" class="hidden space-y-3"></div>
+</main>
+
+<script>
+// ── Mock data ──────────────────────────────────────────────────────────────────
+const MOCK_CAMPAIGNS = [
+  { id: 1, name: "Summer Sale 2026",      clean_name: "summer-sale-2026",      created_at: "2026-02-15", total_clicks: 8420,  channel_count: 3 },
+  { id: 2, name: "Q1 Product Launch",     clean_name: "q1-product-launch",     created_at: "2026-01-10", total_clicks: 12835, channel_count: 4 },
+  { id: 3, name: "Holiday Retargeting",   clean_name: "holiday-retargeting",   created_at: "2025-11-20", total_clicks: 4210,  channel_count: 2 },
+];
+
+function chClass(name) {
+  const map = {
+    'Email':'ch-Email','Meta':'ch-Meta','Google':'ch-Google','TikTok':'ch-TikTok',
+    'LinkedIn':'ch-LinkedIn','Twitter/X':'ch-TwitterX','YouTube':'ch-YouTube',
+    'Organic/SEO':'ch-OrganicSEO','Partners':'ch-Partners'
+  };
+  return map[name] || 'ch-default';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatDate(s) {
+  return new Date(s + 'T00:00:00Z').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+}
+
+function loadDashboard() {
+  const campaigns = MOCK_CAMPAIGNS;
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('subtitle').textContent =
+    campaigns.length + ' campaign' + (campaigns.length !== 1 ? 's' : '');
+
+  const list = document.getElementById('campaigns-list');
+  list.classList.remove('hidden');
+  list.innerHTML = campaigns.map(c => `
+    <a href="campaign.html?id=${c.id}"
+       class="block bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md hover:border-indigo-200 transition-all">
+      <div class="flex items-start gap-4">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-semibold text-slate-900 text-base truncate">${escHtml(c.name)}</h3>
+          <p class="font-mono text-xs text-slate-400 mt-0.5">${escHtml(c.clean_name)}</p>
+          <p class="text-xs text-slate-400 mt-2">
+            <span class="font-medium text-slate-500">${c.channel_count}</span> channel${c.channel_count !== 1 ? 's' : ''}
+            · Created ${formatDate(c.created_at)}
+          </p>
+        </div>
+        <div class="shrink-0 text-right">
+          <p class="text-3xl font-bold text-indigo-600">${Number(c.total_clicks).toLocaleString()}</p>
+          <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mt-0.5">clicks</p>
+        </div>
+      </div>
+    </a>
+  `).join('');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

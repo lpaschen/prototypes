@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Link – Tag Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .fade-in { animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #eef2ff;
+      color: #4338ca;
+      border: 1px solid #c7d2fe;
+      border-radius: 6px;
+      padding: 2px 8px 2px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: ui-monospace, monospace;
+      white-space: nowrap;
+    }
+    .tag-chip button {
+      display: flex;
+      align-items: center;
+      color: #818cf8;
+      cursor: pointer;
+      padding: 0 1px;
+      border-radius: 3px;
+      transition: color .15s, background .15s;
+    }
+    .tag-chip button:hover {
+      color: #4338ca;
+      background: #c7d2fe;
+    }
+
+    .suggestion-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #334155;
+      transition: background .12s;
+    }
+    .suggestion-item:hover, .suggestion-item.active {
+      background: #f1f5f9;
+    }
+    .suggestion-item .match { font-weight: 600; color: #4338ca; }
+
+    .create-new-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #4338ca;
+      transition: background .12s;
+      font-weight: 500;
+    }
+    .create-new-item:hover, .create-new-item.active {
+      background: #eef2ff;
+    }
+
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      background: #cbd5e1;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .toggle.on { background: #4f46e5; }
+    .toggle::after {
+      content:'';
+      position:absolute;
+      top:3px; left:3px;
+      width:16px; height:16px;
+      background:white;
+      border-radius:50%;
+      transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .toggle.on::after { transform: translateX(18px); }
+
+    #dropdown {
+      position: fixed;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.12);
+      z-index: 9999;
+      padding: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    #dropdown.hidden { display: none; }
+
+    .section-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 4px 10px 2px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-start justify-center py-12 px-4">
+
+<div class="w-full max-w-[420px]">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <h1 class="text-xl font-bold text-slate-900">Create a new link</h1>
+    <button class="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+      Bulk upload
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Link Details Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-3 overflow-hidden">
+    <button onclick="toggleSection('link-details-body')" class="w-full flex items-center justify-between px-5 py-4">
+      <div>
+        <div class="text-base font-semibold text-slate-900 text-left">Link details</div>
+        <div class="text-xs text-slate-400 text-left mt-0.5">You have 9,996 links and 10,000 custom back-halves remaining this month.</div>
+      </div>
+      <svg id="link-details-chevron" class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+      </svg>
+    </button>
+    <div id="link-details-body" class="px-5 pb-5 space-y-4 border-t border-slate-100">
+      <div class="pt-4">
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Destination URL</label>
+        <input type="url" id="dest-url" placeholder="https://example.com/my-long-url"
+          class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" />
+      </div>
+      <div class="flex gap-3 items-end">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Short link domain</label>
+          <div class="relative">
+            <select class="w-full appearance-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white pr-8">
+              <option>paschen.me</option>
+              <option>bit.ly</option>
+            </select>
+            <svg class="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+        </div>
+        <span class="text-slate-400 pb-2.5 text-sm">/</span>
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Back-half <span class="font-normal text-slate-400">(optional)</span></label>
+          <div class="relative flex gap-2">
+            <input type="text" placeholder=""
+              class="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow min-w-0" />
+            <button class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition whitespace-nowrap flex-shrink-0">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8S4.41 14.5 8 14.5 14.5 11.59 14.5 8 11.59 1.5 8 1.5z" fill="#818cf8" opacity=".3"/>
+                <path d="M8 3.5a.5.5 0 01.5.5v3.5l2.5 1.5a.5.5 0 01-.5.87L7.5 8.5V4a.5.5 0 01.5-.5z" fill="#4f46e5"/>
+              </svg>
+              Generate
+            </button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Title <span class="font-normal text-slate-400">(optional)</span></label>
+        <input type="text" placeholder=""
+          class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Tags Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-3 overflow-visible">
+    <button onclick="toggleSection('tags-body')" class="w-full flex items-center justify-between px-5 py-4">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+        </svg>
+        <span class="text-base font-semibold text-slate-900">Tags</span>
+        <span id="tag-count-badge" class="hidden bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
+      </div>
+      <svg id="tags-chevron" class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+      </svg>
+    </button>
+
+    <div id="tags-body" class="px-5 pb-5 border-t border-slate-100">
+      <div class="pt-4 space-y-3">
+
+        <!-- Tag input area -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Add tags</label>
+          <p class="text-xs text-slate-400 mb-2.5">Tags help you organize and filter links across campaigns. Select existing or create new ones.</p>
+
+          <!-- Tag chips + input -->
+          <div id="tag-input-container"
+            class="min-h-[44px] w-full rounded-xl border border-slate-200 px-2.5 py-2 flex flex-wrap items-center gap-1.5 cursor-text focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-shadow relative">
+
+            <div id="selected-tags" class="contents"></div>
+
+            <div class="relative flex-1 min-w-[120px]">
+              <input
+                id="tag-input"
+                type="text"
+                placeholder="Search or create…"
+                autocomplete="off"
+                class="w-full text-sm text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none py-0.5"
+                oninput="onTagInput(event)"
+                onkeydown="onTagKeydown(event)"
+                onfocus="showDropdown()"
+                onblur="onInputBlur()"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggestions row -->
+        <div id="suggestions-row">
+          <p class="text-xs font-medium text-slate-400 mb-2">Suggested tags</p>
+          <div id="suggestion-chips" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Sharing Options Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-3 overflow-hidden">
+    <button onclick="toggleSection('sharing-body')" class="w-full flex items-center justify-between px-5 py-4">
+      <div class="text-base font-semibold text-slate-900 text-left">Sharing options</div>
+      <svg id="sharing-chevron" class="w-5 h-5 text-slate-400 transition-transform rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+      </svg>
+    </button>
+    <div id="sharing-body" class="hidden px-5 pb-5 border-t border-slate-100 space-y-4 pt-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M9 9h.01M9 15h.01M15 9h.01M15 15h.01M12 9h.01M12 15h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="text-sm text-slate-700">Generate a QR Code</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">10,000 left</span>
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M2 10h20" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span class="text-sm text-slate-700">Add to a Bitly Page</span>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advanced Settings Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
+    <button onclick="toggleSection('advanced-body')" class="w-full flex items-center justify-between px-5 py-4">
+      <div class="text-base font-semibold text-slate-900 text-left">Advanced settings</div>
+      <svg id="advanced-chevron" class="w-5 h-5 text-slate-400 transition-transform rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+      </svg>
+    </button>
+    <div id="advanced-body" class="hidden px-5 pb-5 border-t border-slate-100 space-y-4 pt-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="text-sm text-slate-700">UTM parameters</span>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span class="text-sm text-slate-700">Link expiration</span>
+          <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">New!</span>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Actions -->
+  <div class="flex items-center justify-between">
+    <button class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition bg-white shadow-sm">
+      Cancel
+    </button>
+    <button onclick="handleCreate()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition shadow-sm">
+      Create your link
+    </button>
+  </div>
+
+  <!-- Tag Dropdown (portal) -->
+  <div id="dropdown" class="hidden">
+    <div id="dropdown-inner"></div>
+  </div>
+
+  <!-- Success Toast -->
+  <div id="success-toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2 fade-in z-50">
+    <svg class="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+    </svg>
+    <span id="toast-msg"></span>
+  </div>
+
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+const EXISTING_TAGS = [
+  'spring-sale', 'email', 'social', 'paid-search', 'retargeting',
+  'newsletter', 'instagram', 'brand-awareness', 'q1-2026', 'partner',
+  'organic', 'promo', 'launch', 'google-ads', 'meta-ads'
+];
+
+const SUGGESTED = ['spring-sale', 'email', 'social', 'q1-2026', 'promo'];
+
+let selectedTags = [];
+let activeIdx = -1;
+let dropdownVisible = false;
+let blurTimeout = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderSuggestions();
+});
+
+// ── Section toggles ───────────────────────────────────────────────────────────
+function toggleSection(id) {
+  const body = document.getElementById(id);
+  const chevron = document.getElementById(id.replace('-body', '-chevron'));
+  const isHidden = body.classList.contains('hidden');
+  body.classList.toggle('hidden', !isHidden);
+  if (chevron) chevron.classList.toggle('rotate-180', !isHidden);
+}
+
+// ── Tag logic ─────────────────────────────────────────────────────────────────
+function addTag(name) {
+  name = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+  if (!name || selectedTags.includes(name)) return;
+  selectedTags.push(name);
+  renderSelectedTags();
+  updateTagBadge();
+  renderSuggestions();
+  document.getElementById('tag-input').value = '';
+  hideDropdown();
+}
+
+function removeTag(name) {
+  selectedTags = selectedTags.filter(t => t !== name);
+  renderSelectedTags();
+  updateTagBadge();
+  renderSuggestions();
+}
+
+function renderSelectedTags() {
+  const container = document.getElementById('selected-tags');
+  container.innerHTML = '';
+  selectedTags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.innerHTML = `
+      ${tag}
+      <button type="button" onclick="removeTag('${tag}')" tabindex="-1" aria-label="Remove ${tag}">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M2 2l8 8M10 2l-8 8"/>
+        </svg>
+      </button>
+    `;
+    container.appendChild(chip);
+  });
+
+  // Update placeholder
+  const input = document.getElementById('tag-input');
+  input.placeholder = selectedTags.length ? '' : 'Search or create…';
+}
+
+function updateTagBadge() {
+  const badge = document.getElementById('tag-count-badge');
+  if (selectedTags.length > 0) {
+    badge.textContent = selectedTags.length;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderSuggestions() {
+  const container = document.getElementById('suggestion-chips');
+  const row = document.getElementById('suggestions-row');
+  const available = SUGGESTED.filter(t => !selectedTags.includes(t));
+  container.innerHTML = '';
+  if (available.length === 0) {
+    row.classList.add('hidden');
+    return;
+  }
+  row.classList.remove('hidden');
+  available.forEach(tag => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-colors';
+    chip.innerHTML = `
+      <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      ${tag}
+    `;
+    chip.onclick = () => addTag(tag);
+    container.appendChild(chip);
+  });
+}
+
+// ── Dropdown ──────────────────────────────────────────────────────────────────
+function getFilteredOptions(query) {
+  const q = query.trim().toLowerCase();
+  const available = EXISTING_TAGS.filter(t => !selectedTags.includes(t));
+  if (!q) return { matches: available.slice(0, 8), showCreate: false, query: q };
+  const matches = available.filter(t => t.includes(q));
+  const exactMatch = matches.some(t => t === q) || selectedTags.includes(q);
+  const normalized = q.replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+  return { matches: matches.slice(0, 8), showCreate: !exactMatch && normalized.length > 0, query: q, normalized };
+}
+
+function highlightMatch(text, query) {
+  if (!query) return text;
+  const idx = text.indexOf(query);
+  if (idx === -1) return text;
+  return text.slice(0, idx) + `<span class="match">${text.slice(idx, idx + query.length)}</span>` + text.slice(idx + query.length);
+}
+
+function buildDropdown(query) {
+  const { matches, showCreate, normalized } = getFilteredOptions(query);
+  const inner = document.getElementById('dropdown-inner');
+  inner.innerHTML = '';
+  activeIdx = -1;
+
+  const allItems = [];
+
+  if (matches.length > 0) {
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.textContent = query ? 'Matching tags' : 'Your tags';
+    inner.appendChild(header);
+
+    matches.forEach((tag, i) => {
+      const el = document.createElement('div');
+      el.className = 'suggestion-item';
+      el.innerHTML = `
+        <span class="tag-chip" style="pointer-events:none">${highlightMatch(tag, query)}</span>
+      `;
+      el.onmousedown = (e) => { e.preventDefault(); addTag(tag); };
+      inner.appendChild(el);
+      allItems.push(el);
+    });
+  }
+
+  if (showCreate) {
+    if (matches.length > 0) {
+      const div = document.createElement('div');
+      div.style.height = '1px';
+      div.style.background = '#f1f5f9';
+      div.style.margin = '4px 0';
+      inner.appendChild(div);
+    }
+    const el = document.createElement('div');
+    el.className = 'create-new-item';
+    el.innerHTML = `
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      Create "<span style="font-family:ui-monospace,monospace;font-size:12px">${normalized}</span>"
+    `;
+    el.onmousedown = (e) => { e.preventDefault(); addTag(normalized); };
+    inner.appendChild(el);
+    allItems.push(el);
+  }
+
+  if (matches.length === 0 && !showCreate) {
+    const el = document.createElement('div');
+    el.className = 'px-3 py-3 text-sm text-slate-400 text-center';
+    el.textContent = 'No tags found';
+    inner.appendChild(el);
+  }
+
+  // Store for keyboard nav
+  inner._items = allItems;
+  inner._tags = [...matches, ...(showCreate ? [normalized] : [])];
+  inner._isCreate = [...matches.map(() => false), ...(showCreate ? [true] : [])];
+}
+
+function positionDropdown() {
+  const container = document.getElementById('tag-input-container');
+  const dd = document.getElementById('dropdown');
+  const rect = container.getBoundingClientRect();
+  dd.style.top = (rect.bottom + 4) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+}
+
+function showDropdown() {
+  const input = document.getElementById('tag-input');
+  buildDropdown(input.value);
+  positionDropdown();
+  document.getElementById('dropdown').classList.remove('hidden');
+  dropdownVisible = true;
+}
+
+function hideDropdown() {
+  document.getElementById('dropdown').classList.add('hidden');
+  dropdownVisible = false;
+  activeIdx = -1;
+}
+
+function onTagInput(e) {
+  buildDropdown(e.target.value);
+  positionDropdown();
+  document.getElementById('dropdown').classList.remove('hidden');
+  dropdownVisible = true;
+}
+
+function onTagKeydown(e) {
+  const inner = document.getElementById('dropdown-inner');
+  const items = inner._items || [];
+  const tags = inner._tags || [];
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    activeIdx = Math.max(activeIdx - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (activeIdx >= 0 && tags[activeIdx]) {
+      addTag(tags[activeIdx]);
+    } else {
+      const val = e.target.value.trim();
+      if (val) addTag(val);
+    }
+  } else if (e.key === 'Backspace' && e.target.value === '' && selectedTags.length) {
+    removeTag(selectedTags[selectedTags.length - 1]);
+  } else if (e.key === 'Escape') {
+    hideDropdown();
+    e.target.blur();
+  } else if (e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val) addTag(val);
+  }
+}
+
+function onInputBlur() {
+  blurTimeout = setTimeout(() => {
+    hideDropdown();
+  }, 150);
+}
+
+document.getElementById('tag-input-container').addEventListener('click', () => {
+  document.getElementById('tag-input').focus();
+});
+
+// ── Create ────────────────────────────────────────────────────────────────────
+function handleCreate() {
+  const url = document.getElementById('dest-url').value.trim();
+  if (!url) {
+    document.getElementById('dest-url').focus();
+    document.getElementById('dest-url').classList.add('ring-2', 'ring-red-400');
+    setTimeout(() => document.getElementById('dest-url').classList.remove('ring-2', 'ring-red-400'), 1800);
+    return;
+  }
+  const tagList = selectedTags.length ? selectedTags.join(', ') : 'no tags';
+  showToast(`Link created with ${tagList}`);
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('success-toast');
+  document.getElementById('toast-msg').textContent = msg;
+  toast.classList.remove('hidden');
+  toast.classList.add('flex');
+  setTimeout(() => {
+    toast.classList.add('hidden');
+    toast.classList.remove('flex');
+  }, 3000);
+}
+</script>
+</body>
+</html>

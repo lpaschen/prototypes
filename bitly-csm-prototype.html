@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitly — Customer Link Attribution</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #EE6123;
+      --orange-hover: #D45518;
+      --orange-light: #FFF3ED;
+      --navy: #1A1A2E;
+      --dark: #16213E;
+      --gray-900: #111827;
+      --gray-700: #374151;
+      --gray-500: #6B7280;
+      --gray-300: #D1D5DB;
+      --gray-100: #F3F4F6;
+      --gray-50: #F9FAFB;
+      --white: #FFFFFF;
+      --green: #10B981;
+      --green-light: #ECFDF5;
+      --blue: #3B82F6;
+      --blue-light: #EFF6FF;
+      --purple: #8B5CF6;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--gray-50);
+      color: var(--gray-900);
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    nav {
+      background: var(--navy);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 32px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .nav-logo svg { width: 80px; }
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+    .nav-link {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-link:hover { background: rgba(255,255,255,0.1); color: white; }
+    .nav-link.active { background: rgba(238,97,35,0.2); color: var(--orange); }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .btn-create {
+      background: var(--orange);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-create:hover { background: var(--orange-hover); }
+
+    /* MAIN LAYOUT */
+    .main {
+      margin-top: 56px;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* PAGES */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ============================================================
+       PAGE 1 – INTEGRATIONS HUB
+    ============================================================ */
+    .integrations-header {
+      background: white;
+      border-bottom: 1px solid var(--gray-300);
+      padding: 32px 40px 24px;
+    }
+    .integrations-header h1 { font-size: 24px; font-weight: 700; color: var(--gray-900); }
+    .integrations-header p { color: var(--gray-500); margin-top: 6px; font-size: 15px; }
+
+    .integrations-body { padding: 32px 40px; }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+
+    .integration-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .integration-card {
+      background: white;
+      border: 2px solid var(--gray-300);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .integration-card:hover { border-color: var(--orange); box-shadow: 0 4px 16px rgba(238,97,35,0.1); }
+    .integration-card.connected { border-color: var(--green); background: var(--green-light); }
+
+    .integration-logo {
+      width: 48px; height: 48px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+    }
+    .integration-name { font-size: 15px; font-weight: 600; color: var(--gray-900); }
+    .integration-desc { font-size: 13px; color: var(--gray-500); line-height: 1.5; }
+    .integration-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .status-dot.connected { background: var(--green); }
+    .status-dot.available { background: var(--gray-300); }
+
+    .connect-btn {
+      border: 1.5px solid var(--orange);
+      color: var(--orange);
+      background: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      width: fit-content;
+    }
+    .connect-btn:hover { background: var(--orange); color: white; }
+    .connect-btn.connected {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+      cursor: default;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none; align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 16px;
+      width: 480px;
+      max-width: 95vw;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-header {
+      padding: 24px 24px 20px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .modal-icon { font-size: 32px; }
+    .modal-title { font-size: 18px; font-weight: 700; }
+    .modal-subtitle { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+    .form-input {
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: var(--font);
+    }
+    .form-input:focus { border-color: var(--orange); }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--gray-100);
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+    .btn-secondary {
+      padding: 10px 20px;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      background: white;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; color: var(--gray-700);
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--gray-500); }
+    .btn-primary {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: var(--orange);
+      color: white;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--orange-hover); }
+
+    /* Sync progress */
+    .sync-progress {
+      display: flex; flex-direction: column; gap: 16px;
+      align-items: center; text-align: center;
+      padding: 8px 0;
+    }
+    .sync-spinner {
+      width: 48px; height: 48px;
+      border: 3px solid var(--gray-100);
+      border-top-color: var(--orange);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .sync-text { font-size: 15px; font-weight: 600; }
+    .sync-subtext { font-size: 13px; color: var(--gray-500); }
+    .progress-bar-wrap {
+      width: 100%; height: 6px;
+      background: var(--gray-100);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--orange);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    /* ============================================================
+       PAGE 2 – CAMPAIGN BUILDER
+    ============================================================ */
+    .campaign-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      min-height: calc(100vh - 56px);
+    }
+
+    .campaign-sidebar {
+      background: white;
+      border-right: 1px solid var(--gray-300);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .sidebar-section { display: flex; flex-direction: column; gap: 12px; }
+    .sidebar-label {
+      font-size: 11px; font-weight: 700;
+      color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.08em;
+    }
+
+    .url-input-wrap { position: relative; }
+    .url-input-wrap .url-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--gray-500); font-size: 14px;
+    }
+    .url-input {
+      width: 100%;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      padding: 10px 12px 10px 36px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: var(--font);
+    }
+    .url-input:focus { border-color: var(--orange); }
+
+    .domain-select {
+      display: flex;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .domain-label {
+      background: var(--gray-50);
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      border-right: 1.5px solid var(--gray-300);
+      white-space: nowrap;
+    }
+    .domain-value {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--orange);
+      font-weight: 600;
+    }
+
+    .back-half-section { display: flex; flex-direction: column; gap: 8px; }
+    .back-half-row { display: flex; gap: 8px; align-items: center; }
+    .back-half-input {
+      flex: 1;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      outline: none;
+      font-family: var(--font);
+      transition: border-color 0.15s;
+    }
+    .back-half-input:focus { border-color: var(--orange); }
+    .token-chip {
+      background: var(--orange-light);
+      color: var(--orange);
+      border: 1.5px solid var(--orange);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .token-chip:hover { background: var(--orange); color: white; }
+    .back-half-hint {
+      font-size: 11px;
+      color: var(--gray-500);
+      padding: 6px 10px;
+      background: var(--gray-50);
+      border-radius: 6px;
+    }
+    .preview-link {
+      font-size: 13px;
+      color: var(--orange);
+      font-weight: 600;
+      padding: 10px 12px;
+      background: var(--orange-light);
+      border-radius: 8px;
+      border: 1.5px solid rgba(238,97,35,0.2);
+      word-break: break-all;
+    }
+
+    .utm-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer;
+    }
+    .utm-toggle-label { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+    .toggle-switch {
+      width: 36px; height: 20px;
+      background: var(--gray-300);
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-switch.on { background: var(--orange); }
+    .toggle-knob {
+      width: 16px; height: 16px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px; left: 2px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch.on .toggle-knob { transform: translateX(16px); }
+
+    .utm-fields { display: flex; flex-direction: column; gap: 8px; }
+    .utm-row { display: flex; gap: 6px; align-items: center; }
+    .utm-key { font-size: 11px; font-weight: 700; color: var(--gray-500); width: 64px; flex-shrink: 0; }
+    .utm-input {
+      flex: 1;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 12px;
+      outline: none;
+      font-family: var(--font);
+    }
+
+    .generate-btn {
+      background: var(--orange);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: auto;
+    }
+    .generate-btn:hover { background: var(--orange-hover); }
+    .generate-btn:disabled { background: var(--gray-300); cursor: not-allowed; }
+
+    /* Customer table panel */
+    .campaign-main {
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-title { font-size: 18px; font-weight: 700; }
+    .panel-subtitle { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
+
+    .search-filter-row {
+      display: flex; gap: 10px; align-items: center;
+    }
+    .search-wrap { position: relative; flex: 1; max-width: 300px; }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--gray-500); font-size: 14px;
+    }
+    .search-input {
+      width: 100%;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      padding: 8px 12px 8px 32px;
+      font-size: 13px;
+      outline: none;
+      font-family: var(--font);
+    }
+    .search-input:focus { border-color: var(--orange); }
+    .filter-chip {
+      border: 1.5px solid var(--gray-300);
+      background: white;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-chip:hover { border-color: var(--orange); color: var(--orange); }
+    .filter-chip.active { background: var(--orange-light); border-color: var(--orange); color: var(--orange); }
+
+    .data-table {
+      background: white;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .table-head {
+      background: var(--gray-50);
+      border-bottom: 1.5px solid var(--gray-300);
+    }
+    .table-head tr th {
+      padding: 11px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: left;
+    }
+    .table-head .th-check { width: 40px; }
+    .table-body tr {
+      border-bottom: 1px solid var(--gray-100);
+      transition: background 0.1s;
+    }
+    .table-body tr:last-child { border-bottom: none; }
+    .table-body tr:hover { background: var(--gray-50); }
+    .table-body tr.selected { background: var(--orange-light); }
+    .table-body td {
+      padding: 13px 16px;
+      font-size: 13px;
+      color: var(--gray-700);
+    }
+    .td-check input[type=checkbox] {
+      width: 15px; height: 15px; cursor: pointer;
+      accent-color: var(--orange);
+    }
+    .td-user { display: flex; align-items: center; gap: 10px; }
+    .user-avatar-sm {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: white;
+      flex-shrink: 0;
+    }
+    .user-name { font-weight: 600; color: var(--gray-900); font-size: 13px; }
+    .user-email { font-size: 11px; color: var(--gray-500); }
+    .tier-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .tier-enterprise { background: #EDE9FE; color: #6D28D9; }
+    .tier-growth { background: var(--blue-light); color: #2563EB; }
+    .tier-starter { background: var(--gray-100); color: var(--gray-600); }
+
+    .selected-count {
+      background: var(--orange-light);
+      border: 1.5px solid rgba(238,97,35,0.3);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--orange);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ============================================================
+       PAGE 3 – GENERATED LINKS
+    ============================================================ */
+    .links-header {
+      background: white;
+      border-bottom: 1px solid var(--gray-300);
+      padding: 28px 40px 20px;
+    }
+    .links-header-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .success-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--green-light);
+      color: #059669;
+      border: 1.5px solid #A7F3D0;
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .links-actions { display: flex; gap: 10px; }
+
+    .action-btn {
+      border: 1.5px solid var(--gray-300);
+      background: white;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--gray-700);
+      display: flex; align-items: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .action-btn:hover { border-color: var(--gray-500); }
+    .action-btn.primary {
+      background: var(--orange);
+      border-color: var(--orange);
+      color: white;
+    }
+    .action-btn.primary:hover { background: var(--orange-hover); }
+
+    .links-stats {
+      display: flex; gap: 24px;
+      margin-top: 16px;
+    }
+    .stat-pill {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--gray-600);
+    }
+    .stat-pill strong { color: var(--gray-900); }
+
+    .links-body { padding: 28px 40px; }
+
+    .links-table-wrap {
+      background: white;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .links-table td.td-link {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--orange);
+      font-weight: 600;
+    }
+    .copy-btn {
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--gray-400);
+      font-size: 13px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .copy-btn:hover { color: var(--orange); }
+    .click-count {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--gray-500);
+    }
+
+    /* ============================================================
+       PAGE 4 – ANALYTICS
+    ============================================================ */
+    .analytics-header {
+      background: white;
+      border-bottom: 1px solid var(--gray-300);
+      padding: 28px 40px 20px;
+    }
+    .analytics-tabs {
+      display: flex; gap: 0;
+      border-bottom: 1px solid var(--gray-300);
+      padding: 0 40px;
+      background: white;
+    }
+    .analytics-tab {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-500);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s;
+    }
+    .analytics-tab:hover { color: var(--gray-900); }
+    .analytics-tab.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
+
+    .analytics-body { padding: 28px 40px; display: flex; flex-direction: column; gap: 24px; }
+
+    .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .metric-card {
+      background: white;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metric-label { font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.06em; }
+    .metric-value { font-size: 28px; font-weight: 800; color: var(--gray-900); margin-top: 6px; }
+    .metric-change { font-size: 12px; margin-top: 4px; }
+    .metric-change.up { color: var(--green); }
+    .metric-change.neutral { color: var(--gray-500); }
+
+    .chart-card {
+      background: white;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .chart-title { font-size: 15px; font-weight: 700; margin-bottom: 20px; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; }
+    .bar-group { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+    .bar-fill {
+      background: var(--orange);
+      border-radius: 4px 4px 0 0;
+      width: 100%;
+      opacity: 0.85;
+      min-height: 4px;
+      transition: opacity 0.15s;
+    }
+    .bar-fill:hover { opacity: 1; }
+    .bar-label { font-size: 10px; color: var(--gray-500); }
+
+    .attribution-table {
+      background: white;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .sparkline { display: flex; align-items: flex-end; gap: 2px; height: 24px; }
+    .spark-bar { background: var(--orange); border-radius: 1px; width: 4px; opacity: 0.7; min-height: 2px; }
+
+    .health-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block;
+    }
+    .health-high { background: var(--green); }
+    .health-med { background: #F59E0B; }
+    .health-low { background: #EF4444; }
+
+    /* ============================================================
+       STEP INDICATOR (top of page 2)
+    ============================================================ */
+    .step-bar {
+      background: white;
+      border-bottom: 1px solid var(--gray-300);
+      padding: 14px 40px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+    .step-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 500;
+      color: var(--gray-400);
+    }
+    .step-item.done { color: var(--green); }
+    .step-item.active { color: var(--orange); font-weight: 700; }
+    .step-circle {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .step-item.done .step-circle { background: var(--green); border-color: var(--green); color: white; }
+    .step-item.active .step-circle { background: var(--orange); border-color: var(--orange); color: white; }
+    .step-sep { flex: 1; height: 1px; background: var(--gray-200); margin: 0 12px; max-width: 60px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--gray-900); color: white;
+      padding: 12px 18px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      z-index: 999;
+      transform: translateY(80px);
+      transition: transform 0.3s ease;
+    }
+    .toast.show { transform: translateY(0); }
+
+    /* ============================================================
+       DISTRIBUTION PAGE
+    ============================================================ */
+    .distribute-header {
+      background: white;
+      border-bottom: 1px solid var(--gray-300);
+      padding: 28px 40px 20px;
+    }
+    .distribute-body { padding: 32px 40px; max-width: 900px; }
+
+    .channel-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 8px;
+    }
+    .channel-card {
+      background: white;
+      border: 2px solid var(--gray-300);
+      border-radius: 16px;
+      padding: 28px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .channel-card:hover { border-color: var(--orange); box-shadow: 0 4px 20px rgba(238,97,35,0.12); }
+    .channel-icon { font-size: 36px; }
+    .channel-name { font-size: 18px; font-weight: 700; }
+    .channel-desc { font-size: 13px; color: var(--gray-500); line-height: 1.6; }
+    .channel-choose {
+      margin-top: auto;
+      background: var(--orange);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      width: fit-content;
+      transition: background 0.15s;
+    }
+    .channel-choose:hover { background: var(--orange-hover); }
+
+    .composer-wrap {
+      display: none;
+      gap: 28px;
+    }
+    .composer-wrap.visible { display: grid; grid-template-columns: 1fr 340px; }
+
+    .composer-form {
+      background: white;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .composer-form-header {
+      padding: 16px 20px;
+      border-bottom: 1.5px solid var(--gray-100);
+      display: flex; align-items: center; gap: 10px;
+      font-size: 15px; font-weight: 700;
+    }
+    .composer-fields { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .composer-row { display: flex; align-items: center; gap: 10px; }
+    .composer-field-label {
+      font-size: 12px; font-weight: 700; color: var(--gray-500);
+      width: 60px; flex-shrink: 0; text-transform: uppercase;
+    }
+    .composer-input {
+      flex: 1;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      outline: none;
+      font-family: var(--font);
+      transition: border-color 0.15s;
+    }
+    .composer-input:focus { border-color: var(--orange); }
+    .composer-body {
+      width: 100%;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      font-family: var(--font);
+      resize: vertical;
+      min-height: 140px;
+      outline: none;
+      line-height: 1.6;
+      transition: border-color 0.15s;
+    }
+    .composer-body:focus { border-color: var(--orange); }
+    .link-token {
+      display: inline-block;
+      background: var(--orange-light);
+      color: var(--orange);
+      border: 1px solid rgba(238,97,35,0.3);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+    .char-count {
+      font-size: 11px; color: var(--gray-500); text-align: right; margin-top: -8px;
+    }
+    .char-count.warn { color: #F59E0B; }
+    .char-count.over { color: #EF4444; }
+    .composer-footer {
+      padding: 16px 20px;
+      border-top: 1.5px solid var(--gray-100);
+      display: flex; gap: 10px; justify-content: space-between; align-items: center;
+    }
+
+    .preview-panel {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .preview-label {
+      font-size: 11px; font-weight: 700; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    /* Email preview */
+    .email-preview {
+      background: white;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    .email-preview-header {
+      background: var(--gray-50);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--gray-200);
+      font-size: 11px; color: var(--gray-500);
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .email-preview-body { padding: 16px; line-height: 1.7; color: var(--gray-700); }
+    .email-link-pill {
+      display: inline-block;
+      color: var(--orange); font-weight: 600;
+      font-family: monospace; font-size: 12px;
+    }
+
+    /* Phone mockup */
+    .phone-mockup {
+      background: var(--gray-900);
+      border-radius: 24px;
+      padding: 8px;
+      width: 220px;
+      align-self: center;
+    }
+    .phone-screen {
+      background: #1C1C1E;
+      border-radius: 18px;
+      padding: 16px 12px;
+      min-height: 200px;
+    }
+    .phone-header {
+      font-size: 11px; color: rgba(255,255,255,0.4);
+      text-align: center; margin-bottom: 14px;
+    }
+    .sms-bubble {
+      background: #3A3A3C;
+      border-radius: 14px 14px 14px 4px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: white;
+      line-height: 1.5;
+      max-width: 85%;
+    }
+    .sms-link { color: #5AC8FA; text-decoration: underline; font-family: monospace; font-size: 12px; }
+    .sms-time { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 6px; }
+
+    .send-btn {
+      background: var(--orange);
+      color: white; border: none;
+      padding: 11px 20px;
+      border-radius: 8px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      transition: background 0.15s;
+    }
+    .send-btn:hover { background: var(--orange-hover); }
+
+    /* Status badge in analytics */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 100px;
+      font-size: 11px; font-weight: 700;
+    }
+    .status-clicked { background: var(--green-light); color: #059669; }
+    .status-pending { background: var(--gray-100); color: var(--gray-500); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .campaign-layout { grid-template-columns: 1fr; }
+      .campaign-sidebar { border-right: none; border-bottom: 1px solid var(--gray-300); }
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ============================================================
+       LINK DETAIL DRAWER
+    ============================================================ */
+    #drawerBackdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 150;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #drawerBackdrop.open { opacity: 1; pointer-events: auto; cursor: pointer; }
+
+    #linkDrawer {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: 440px;
+      background: white;
+      z-index: 160;
+      box-shadow: -4px 0 32px rgba(0,0,0,0.15);
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    #linkDrawer.open { transform: translateX(0); }
+
+    .drawer-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1.5px solid var(--gray-100);
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .drawer-link-id {
+      font-family: monospace; font-size: 16px; font-weight: 700;
+      color: var(--orange);
+    }
+    .drawer-sub {
+      font-size: 11px; color: var(--gray-500); margin-top: 3px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .drawer-close {
+      background: none; border: none;
+      font-size: 18px; color: var(--gray-400);
+      cursor: pointer; padding: 4px 8px; border-radius: 6px;
+      line-height: 1; transition: color 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .drawer-close:hover { color: var(--gray-900); background: var(--gray-100); }
+
+    .drawer-stats-row {
+      display: flex; gap: 12px;
+      padding: 16px 24px;
+      border-bottom: 1.5px solid var(--gray-100);
+      flex-shrink: 0;
+    }
+    .drawer-stat {
+      background: var(--gray-50);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      padding: 10px 14px;
+      flex: 1; text-align: center;
+    }
+    .drawer-stat-val { font-size: 20px; font-weight: 800; color: var(--gray-900); }
+    .drawer-stat-label { font-size: 10px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+    .drawer-chart-wrap {
+      padding: 16px 24px;
+      border-bottom: 1.5px solid var(--gray-100);
+      flex-shrink: 0;
+    }
+    .drawer-chart-title {
+      font-size: 11px; font-weight: 700; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+    }
+    .drawer-bar-chart {
+      display: flex; align-items: flex-end; gap: 6px; height: 56px;
+    }
+    .drawer-bar-group { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .drawer-bar-fill {
+      background: var(--orange); border-radius: 3px 3px 0 0;
+      width: 100%; opacity: 0.8; min-height: 3px;
+    }
+    .drawer-bar-label { font-size: 9px; color: var(--gray-400); }
+
+    .drawer-events-header {
+      padding: 14px 24px 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .drawer-events-title {
+      font-size: 13px; font-weight: 700; color: var(--gray-900);
+    }
+    .drawer-events-count {
+      font-size: 11px; color: var(--gray-500);
+      background: var(--gray-100); border-radius: 100px; padding: 2px 8px;
+    }
+
+    .drawer-events-scroll {
+      flex: 1; overflow-y: auto;
+      padding: 0 24px 24px;
+    }
+    .event-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-device-chip {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--gray-100); border-radius: 6px;
+      padding: 4px 8px; font-size: 11px; font-weight: 600;
+      color: var(--gray-700); white-space: nowrap; flex-shrink: 0; width: 90px;
+    }
+    .event-details { flex: 1; min-width: 0; }
+    .event-ts { font-size: 12px; color: var(--gray-900); font-weight: 500; }
+    .event-meta { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+    .event-ref {
+      display: inline-block;
+      font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 100px;
+      margin-left: 4px;
+    }
+    .ref-email  { background: var(--blue-light); color: #2563EB; }
+    .ref-sms    { background: var(--green-light); color: #059669; }
+    .ref-direct { background: var(--gray-100); color: var(--gray-600); }
+
+    .drawer-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; padding: 48px 24px; color: var(--gray-400); text-align: center;
+    }
+    .drawer-empty-icon { font-size: 36px; }
+    .drawer-empty-text { font-size: 14px; font-weight: 600; color: var(--gray-500); }
+    .drawer-empty-sub { font-size: 12px; color: var(--gray-400); }
+
+    /* Clickable analytics rows */
+    .analytics-row-clickable {
+      cursor: pointer; transition: background 0.1s;
+    }
+    .analytics-row-clickable:hover { background: var(--orange-light) !important; }
+    .row-chevron {
+      color: var(--gray-300); font-size: 14px; transition: color 0.15s, transform 0.15s;
+    }
+    .analytics-row-clickable:hover .row-chevron { color: var(--orange); transform: translateX(2px); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <svg viewBox="0 0 80 24" fill="none">
+      <text x="0" y="20" font-family="Arial Black, sans-serif" font-size="22" font-weight="900" fill="#EE6123">bitly</text>
+    </svg>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" onclick="showPage('analytics')">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg>
+      Analytics
+    </a>
+    <a class="nav-link" onclick="showPage('links')">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 4.5a.5.5 0 0 1 .5-.5h3a3 3 0 0 1 0 6H7a.5.5 0 0 1 0-1h3a2 2 0 0 0 0-4H7a.5.5 0 0 1-.5-.5zM9 8.5a.5.5 0 0 1-.5.5h-3a3 3 0 0 1 0-6H9a.5.5 0 0 1 0 1H5.5a2 2 0 0 0 0 4H8.5a.5.5 0 0 1 .5.5z"/></svg>
+      Links
+    </a>
+    <a class="nav-link active" onclick="showPage('integrations')">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a1 1 0 0 1 1 1v1.5a.5.5 0 0 1-1 0V2a.5.5 0 0 0-1 0v.5a.5.5 0 0 1-1 0V1a1 1 0 0 1 1-1h1zM3.5 5a.5.5 0 0 0-.5.5V11a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V5.5a.5.5 0 0 0-1 0V11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5.5a.5.5 0 0 0-.5-.5z"/></svg>
+      Integrations
+    </a>
+  </div>
+  <div class="nav-right">
+    <button class="btn-create" onclick="showPage('builder')">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 0v12M0 6h12"/></svg>
+      Create
+    </button>
+    <div class="nav-avatar">AC</div>
+  </div>
+</nav>
+
+<!-- MODAL: Connect CSM -->
+<div class="modal-overlay" id="connectModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-icon" id="modalIcon">☁️</div>
+      <div>
+        <div class="modal-title" id="modalTitle">Connect Salesforce</div>
+        <div class="modal-subtitle">Sync your customer data with Bitly</div>
+      </div>
+    </div>
+    <div id="modalConnect">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Instance URL</label>
+          <input class="form-input" value="https://yourorg.salesforce.com" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client ID</label>
+          <input class="form-input" placeholder="3MVG9..." />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client Secret</label>
+          <input class="form-input" type="password" placeholder="••••••••••••" />
+        </div>
+        <div style="font-size:12px; color:var(--gray-500); background:var(--gray-50); padding:10px 12px; border-radius:6px; line-height:1.5;">
+          Bitly will sync Contacts and Accounts via OAuth. Data is refreshed every 4 hours.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="startSync()">Authorize & Sync</button>
+      </div>
+    </div>
+    <div id="modalSync" style="display:none; padding: 32px 24px;">
+      <div class="sync-progress">
+        <div class="sync-spinner" id="syncSpinner"></div>
+        <div class="sync-text" id="syncText">Connecting to Salesforce…</div>
+        <div class="sync-subtext" id="syncSubtext">Authenticating via OAuth</div>
+        <div style="width:100%">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="syncBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modalDone" style="display:none; padding: 32px 24px; text-align:center;">
+      <div style="font-size:48px; margin-bottom:12px;">✅</div>
+      <div style="font-size:17px; font-weight:700; margin-bottom:6px;">Salesforce Connected!</div>
+      <div style="font-size:13px; color:var(--gray-500); margin-bottom:20px;">Imported <strong>312 contacts</strong> across <strong>89 accounts</strong>.</div>
+      <button class="btn-primary" onclick="finishConnect()" style="width:100%">Go to Link Builder →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✓ Copied to clipboard</div>
+
+<!-- ============================================================
+     PAGE 1: INTEGRATIONS
+============================================================ -->
+<div class="main page active" id="page-integrations">
+  <div class="integrations-header">
+    <h1>Integrations</h1>
+    <p>Connect your tools to enrich link attribution with customer data.</p>
+  </div>
+  <div class="integrations-body">
+    <div class="section-title">CRM &amp; Customer Success</div>
+    <div class="integration-grid">
+
+      <div class="integration-card" id="card-sf">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="integration-logo" style="background:#00A1E0; color:white; font-size:20px; font-weight:800;">☁</div>
+          <div class="integration-status">
+            <div class="status-dot available" id="dot-sf"></div>
+            <span id="status-sf" style="color:var(--gray-500);">Not connected</span>
+          </div>
+        </div>
+        <div>
+          <div class="integration-name">Salesforce</div>
+          <div class="integration-desc">Sync contacts, accounts, and opportunity data to enable per-customer link attribution.</div>
+        </div>
+        <button class="connect-btn" id="btn-sf" onclick="openModal('Salesforce','☁️','sf')">Connect</button>
+      </div>
+
+      <div class="integration-card" id="card-hs">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="integration-logo" style="background:#FF7A59; color:white; font-size:20px;">🔶</div>
+          <div class="integration-status">
+            <div class="status-dot available" id="dot-hs"></div>
+            <span id="status-hs" style="color:var(--gray-500);">Not connected</span>
+          </div>
+        </div>
+        <div>
+          <div class="integration-name">HubSpot</div>
+          <div class="integration-desc">Import your HubSpot contacts and companies to track engagement at the customer level.</div>
+        </div>
+        <button class="connect-btn" id="btn-hs" onclick="openModal('HubSpot','🔶','hs')">Connect</button>
+      </div>
+
+      <div class="integration-card" id="card-gn">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="integration-logo" style="background:#00B388; color:white; font-size:20px;">📊</div>
+          <div class="integration-status">
+            <div class="status-dot available" id="dot-gn"></div>
+            <span id="status-gn" style="color:var(--gray-500);">Not connected</span>
+          </div>
+        </div>
+        <div>
+          <div class="integration-name">Gainsight</div>
+          <div class="integration-desc">Pull in health scores, MRR, and customer segments to layer attribution onto CS data.</div>
+        </div>
+        <button class="connect-btn" id="btn-gn" onclick="openModal('Gainsight','📊','gn')">Connect</button>
+      </div>
+
+      <div class="integration-card" id="card-ch">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="integration-logo" style="background:#7B5EA7; color:white; font-size:20px;">🔮</div>
+          <div class="integration-status">
+            <div class="status-dot available" id="dot-ch"></div>
+            <span id="status-ch" style="color:var(--gray-500);">Not connected</span>
+          </div>
+        </div>
+        <div>
+          <div class="integration-name">ChurnZero</div>
+          <div class="integration-desc">Connect ChurnZero to map customer engagement events to Bitly link activity.</div>
+        </div>
+        <button class="connect-btn" id="btn-ch" onclick="openModal('ChurnZero','🔮','ch')">Connect</button>
+      </div>
+    </div>
+
+    <div class="section-title">Marketing Automation</div>
+    <div class="integration-grid">
+      <div class="integration-card">
+        <div class="integration-logo" style="background:#1681FB; color:white; font-size:20px;">📧</div>
+        <div>
+          <div class="integration-name">Marketo</div>
+          <div class="integration-desc">Embed Bitly short links in Marketo campaigns with auto-populated UTM parameters.</div>
+        </div>
+        <div class="integration-status" style="margin-top:4px;">
+          <div class="status-dot available"></div>
+          <span style="color:var(--gray-500); font-size:12px; font-weight:600;">Coming soon</span>
+        </div>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:#FFD000; color:#333; font-size:20px;">✉️</div>
+        <div>
+          <div class="integration-name">Mailchimp</div>
+          <div class="integration-desc">Auto-shorten links in email campaigns and track clicks in Bitly Analytics.</div>
+        </div>
+        <div class="integration-status" style="margin-top:4px;">
+          <div class="status-dot available"></div>
+          <span style="color:var(--gray-500); font-size:12px; font-weight:600;">Coming soon</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 2: LINK BUILDER
+============================================================ -->
+<div class="main page" id="page-builder">
+  <div class="step-bar">
+    <div class="step-item done">
+      <div class="step-circle">✓</div>
+      <span>Connect CSM</span>
+    </div>
+    <div class="step-sep"></div>
+    <div class="step-item active">
+      <div class="step-circle">2</div>
+      <span>Build Campaign Links</span>
+    </div>
+    <div class="step-sep"></div>
+    <div class="step-item">
+      <div class="step-circle">3</div>
+      <span>Distribute</span>
+    </div>
+    <div class="step-sep"></div>
+    <div class="step-item">
+      <div class="step-circle">4</div>
+      <span>Track Attribution</span>
+    </div>
+  </div>
+
+  <div class="campaign-layout">
+    <!-- SIDEBAR -->
+    <div class="campaign-sidebar">
+      <div style="font-size:16px; font-weight:700; color:var(--gray-900);">Configure Links</div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Destination URL</div>
+        <div class="url-input-wrap">
+          <span class="url-icon">🔗</span>
+          <input class="url-input" id="destUrl" value="https://bitly.com/blog/q1-product-update" placeholder="https://..." oninput="updatePreview()" />
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Short Link Domain</div>
+        <div class="domain-select">
+          <div class="domain-label">Domain</div>
+          <div class="domain-value">bit.ly</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section back-half-section">
+        <div class="sidebar-label">Back-Half Pattern</div>
+        <input class="back-half-input" id="backHalf" value="q1-update-" placeholder="e.g. campaign-" oninput="updatePreview()" style="width:100%;" />
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <div class="token-chip" onclick="insertToken('{id}')">&#123;id&#125;</div>
+          <div class="token-chip" onclick="insertToken('{tier}')">&#123;tier&#125;</div>
+        </div>
+        <div class="back-half-hint">Use <code style="font-size:11px;">{id}</code> to create anonymous, customer-specific links — no PII in the URL</div>
+        <div style="font-size:11px; font-weight:600; color:var(--gray-500); margin-top:4px;">PREVIEW</div>
+        <div class="preview-link" id="linkPreview">bit.ly/q1-update-c001</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="utm-toggle" onclick="toggleUtm()">
+          <div class="utm-toggle-label">UTM Parameters</div>
+          <div class="toggle-switch" id="utmToggle"><div class="toggle-knob"></div></div>
+        </div>
+        <div id="utmFields" class="utm-fields" style="display:none;">
+          <div class="utm-row">
+            <div class="utm-key">Source</div>
+            <input class="utm-input" value="bitly" />
+          </div>
+          <div class="utm-row">
+            <div class="utm-key">Medium</div>
+            <input class="utm-input" value="csm-outreach" />
+          </div>
+          <div class="utm-row">
+            <div class="utm-key">Campaign</div>
+            <input class="utm-input" value="q1-update-2026" />
+          </div>
+          <div class="utm-row">
+            <div class="utm-key">Content</div>
+            <input class="utm-input" placeholder="{id}" />
+          </div>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="genBtn" onclick="generateLinks()" disabled>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M7 0l1.5 4.5H13l-3.75 2.75L10.75 12 7 9.25 3.25 12l1.5-4.75L1 4.5h4.5z"/></svg>
+        Generate Links for <span id="genCount">0</span> Customers
+      </button>
+    </div>
+
+    <!-- MAIN: Customer Table -->
+    <div class="campaign-main">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Customer Audience</div>
+          <div class="panel-subtitle">312 contacts synced from Salesforce · Last updated 2 min ago</div>
+        </div>
+        <button class="action-btn" onclick="selectAll()">Select All</button>
+      </div>
+
+      <div class="search-filter-row">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" placeholder="Search customers..." oninput="filterTable(this.value)" />
+        </div>
+        <div class="filter-chip active" onclick="setFilter('all', this)">All</div>
+        <div class="filter-chip" onclick="setFilter('enterprise', this)">Enterprise</div>
+        <div class="filter-chip" onclick="setFilter('growth', this)">Growth</div>
+        <div class="filter-chip" onclick="setFilter('starter', this)">Starter</div>
+      </div>
+
+      <div id="selectedBar" class="selected-count" style="display:none;">
+        <span><strong id="selectedNum">0</strong> customers selected</span>
+        <span style="font-size:11px; opacity:0.7;">Links will be auto-generated for each</span>
+      </div>
+
+      <div class="data-table">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead class="table-head">
+            <tr>
+              <th class="th-check"><input type="checkbox" id="selectAllCb" onchange="toggleSelectAll(this)" style="accent-color:var(--orange);" /></th>
+              <th>Customer</th>
+              <th>Company</th>
+              <th>Tier</th>
+              <th>CSM Owner</th>
+              <th>MRR</th>
+              <th>Preview Link</th>
+            </tr>
+          </thead>
+          <tbody class="table-body" id="customerTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 3: GENERATED LINKS
+============================================================ -->
+<div class="main page" id="page-links">
+  <div class="links-header">
+    <div class="links-header-top">
+      <div>
+        <div class="success-badge">
+          <span>✓</span> Links Generated
+        </div>
+        <h1 style="font-size:22px; font-weight:700;">Q1 Update Campaign — Customer Links</h1>
+        <p style="color:var(--gray-500); margin-top:4px; font-size:13px;">12 unique short links created · Each routes to the same destination</p>
+      </div>
+      <div class="links-actions">
+        <button class="action-btn" onclick="showToast('CSV exported!')">
+          📥 Export CSV
+        </button>
+        <button class="action-btn" onclick="showToast('All links copied!')">
+          📋 Copy All
+        </button>
+        <button class="action-btn primary" onclick="showPage('distribute')">
+          Distribute Links →
+        </button>
+      </div>
+    </div>
+    <div class="links-stats">
+      <div class="stat-pill">🔗 <strong>12</strong> links</div>
+      <div class="stat-pill">👤 <strong>12</strong> customers</div>
+      <div class="stat-pill">🌐 <strong>1</strong> destination</div>
+      <div class="stat-pill">📊 <strong>0</strong> clicks so far</div>
+    </div>
+  </div>
+
+  <div class="links-body">
+    <div class="links-table-wrap">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead class="table-head">
+          <tr>
+            <th>Customer</th>
+            <th>Company</th>
+            <th>Tier</th>
+            <th>Short Link</th>
+            <th>Destination</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody class="table-body" id="generatedLinksBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 3b: DISTRIBUTE
+============================================================ -->
+<div class="main page" id="page-distribute">
+  <div class="distribute-header">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between;">
+      <div>
+        <div class="success-badge" style="margin-bottom:8px;">
+          <span>✓</span> 12 Links Ready
+        </div>
+        <h1 style="font-size:22px; font-weight:700;">Distribute Your Links</h1>
+        <p style="color:var(--gray-500); margin-top:4px; font-size:13px;">Each customer gets their unique, anonymous link embedded in the message</p>
+      </div>
+      <button class="action-btn" onclick="showPage('links')">← Back to Links</button>
+    </div>
+  </div>
+
+  <div class="distribute-body">
+
+    <!-- Phase A: Channel Picker -->
+    <div id="channelPicker">
+      <div class="section-title" style="margin-bottom:16px;">Choose a distribution channel</div>
+      <div class="channel-cards">
+        <div class="channel-card" onclick="showComposer('email')">
+          <div class="channel-icon">📧</div>
+          <div>
+            <div class="channel-name">Email</div>
+            <div class="channel-desc">Send a personalized email to each customer with their unique short link auto-embedded. Works with your existing ESP or sends directly.</div>
+          </div>
+          <button class="channel-choose" onclick="showComposer('email')">Compose Email →</button>
+        </div>
+        <div class="channel-card" onclick="showComposer('sms')">
+          <div class="channel-icon">💬</div>
+          <div>
+            <div class="channel-name">SMS</div>
+            <div class="channel-desc">Send a short text message with each customer's unique link. Ideal for high-visibility outreach — links are short enough to fit any SMS.</div>
+          </div>
+          <button class="channel-choose" onclick="showComposer('sms')">Compose SMS →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase B: Email Composer -->
+    <div id="emailComposer" class="composer-wrap">
+      <div class="composer-form">
+        <div class="composer-form-header">
+          📧 Email Composer
+          <span style="font-size:12px; font-weight:400; color:var(--gray-500); margin-left:auto;">12 recipients</span>
+        </div>
+        <div class="composer-fields">
+          <div class="composer-row">
+            <div class="composer-field-label">From</div>
+            <input class="composer-input" value="your-team@company.com" />
+          </div>
+          <div class="composer-row">
+            <div class="composer-field-label">Subject</div>
+            <input class="composer-input" id="emailSubject" value="Your Q1 product update is here" />
+          </div>
+          <div>
+            <textarea class="composer-body" id="emailBody" oninput="updateEmailPreview()">Hi there,
+
+We've put together a Q1 product update with everything you need to know — check it out here:
+
+→ {link}
+
+As always, let us know if you have any questions.
+
+Best,
+The Bitly Team</textarea>
+            <div style="font-size:11px; color:var(--gray-500); margin-top:6px; padding: 6px 10px; background:var(--orange-light); border-radius:6px;">
+              <span class="link-token">{link}</span> will be replaced with each customer's unique short link at send time
+            </div>
+          </div>
+        </div>
+        <div class="composer-footer">
+          <button class="action-btn" onclick="showComposer(null)">← Back</button>
+          <button class="send-btn" onclick="sendLinks('email')">
+            ✉️ Send to 12 customers
+          </button>
+        </div>
+      </div>
+      <div class="preview-panel">
+        <div class="preview-label">Preview — Customer c001</div>
+        <div class="email-preview">
+          <div class="email-preview-header">
+            <div><strong>From:</strong> your-team@company.com</div>
+            <div><strong>To:</strong> [recipient — not stored]</div>
+            <div id="emailPreviewSubject"><strong>Subject:</strong> Your Q1 product update is here</div>
+          </div>
+          <div class="email-preview-body" id="emailPreviewBody">
+            Hi there,<br><br>
+            We've put together a Q1 product update with everything you need to know — check it out here:<br><br>
+            → <span class="email-link-pill">bit.ly/q1-update-c001</span><br><br>
+            As always, let us know if you have any questions.<br><br>
+            Best,<br>The Bitly Team
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--gray-500); line-height:1.6; padding:10px 12px; background:var(--gray-50); border-radius:8px; border:1px solid var(--gray-200);">
+          Each of the 12 recipients receives a unique link. Bitly resolves the correct destination — no PII is stored in the platform.
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase B: SMS Composer -->
+    <div id="smsComposer" class="composer-wrap">
+      <div class="composer-form">
+        <div class="composer-form-header">
+          💬 SMS Composer
+          <span style="font-size:12px; font-weight:400; color:var(--gray-500); margin-left:auto;">12 recipients</span>
+        </div>
+        <div class="composer-fields">
+          <div>
+            <textarea class="composer-body" id="smsBody" oninput="updateSmsPreview()" style="min-height:100px;">Hey! Your Q1 product update from our team is ready — check it out: {link}</textarea>
+            <div class="char-count" id="smsCharCount">68 / 160 characters (link counts as ~23 chars)</div>
+          </div>
+          <div style="font-size:11px; color:var(--gray-500); padding: 6px 10px; background:var(--orange-light); border-radius:6px;">
+            <span class="link-token">{link}</span> is replaced with each customer's unique short link at send time
+          </div>
+        </div>
+        <div class="composer-footer">
+          <button class="action-btn" onclick="showComposer(null)">← Back</button>
+          <button class="send-btn" onclick="sendLinks('sms')">
+            💬 Send to 12 customers
+          </button>
+        </div>
+      </div>
+      <div class="preview-panel">
+        <div class="preview-label">Preview — Customer c001</div>
+        <div class="phone-mockup">
+          <div class="phone-screen">
+            <div class="phone-header">Messages</div>
+            <div class="sms-bubble">
+              <span id="smsPreviewText">Hey! Your Q1 product update from our team is ready — check it out: </span><span class="sms-link">bit.ly/q1-update-c001</span>
+              <div class="sms-time">Now</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--gray-500); line-height:1.6; padding:10px 12px; background:var(--gray-50); border-radius:8px; border:1px solid var(--gray-200);">
+          12 messages sent — one per customer. Each contains only their unique link, no personally identifiable info.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 4: ANALYTICS
+============================================================ -->
+<div class="main page" id="page-analytics">
+  <div class="analytics-header">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between;">
+      <div>
+        <h1 style="font-size:22px; font-weight:700;">Attribution Analytics</h1>
+        <p style="color:var(--gray-500); margin-top:4px; font-size:13px;">Q1 Update Campaign · Link-level engagement — no customer identity stored</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="action-btn">Last 30 days ▾</button>
+        <button class="action-btn primary">Export Report</button>
+      </div>
+    </div>
+  </div>
+  <div class="analytics-tabs">
+    <div class="analytics-tab active">Overview</div>
+    <div class="analytics-tab">By Link</div>
+    <div class="analytics-tab">Geo</div>
+  </div>
+  <div class="analytics-body">
+
+    <!-- Metrics -->
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Total Clicks</div>
+        <div class="metric-value">2,847</div>
+        <div class="metric-change up">↑ 34% vs. last campaign</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Unique Customers</div>
+        <div class="metric-value">9 / 12</div>
+        <div class="metric-change neutral">75% open rate</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Avg. Clicks / Customer</div>
+        <div class="metric-value">237</div>
+        <div class="metric-change up">↑ 18% vs. benchmark</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Repeat Engagers</div>
+        <div class="metric-value">7 / 9</div>
+        <div class="metric-change up">↑ Clicked more than once</div>
+      </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="chart-card">
+      <div class="chart-title">Clicks Over Time</div>
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+
+    <!-- Attribution table -->
+    <div class="attribution-table">
+      <div style="padding: 16px 20px; border-bottom: 1.5px solid var(--gray-300); display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-size:15px; font-weight:700;">Per-Link Attribution</div>
+        <div style="font-size:12px; color:var(--gray-500);">Sorted by total clicks · No customer identity stored</div>
+      </div>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead class="table-head">
+          <tr>
+            <th>Link ID</th>
+            <th>Total Clicks</th>
+            <th>Sessions</th>
+            <th>First Seen</th>
+            <th>Last Seen</th>
+            <th>Trend</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody class="table-body" id="analyticsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- LINK DETAIL DRAWER -->
+<div id="drawerBackdrop" onclick="closeDrawer()"></div>
+<div id="linkDrawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-link-id" id="drawerLinkId">bit.ly/q1-update-c001</div>
+      <div class="drawer-sub" id="drawerLinkSub">Link ID: c001</div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-stats-row">
+    <div class="drawer-stat">
+      <div class="drawer-stat-val" id="drawerClicks">0</div>
+      <div class="drawer-stat-label">Clicks</div>
+    </div>
+    <div class="drawer-stat">
+      <div class="drawer-stat-val" id="drawerSessions">0</div>
+      <div class="drawer-stat-label">Sessions</div>
+    </div>
+    <div class="drawer-stat">
+      <div class="drawer-stat-val" id="drawerFirstSeen" style="font-size:13px; padding-top:4px;">—</div>
+      <div class="drawer-stat-label">First Seen</div>
+    </div>
+  </div>
+  <div class="drawer-chart-wrap">
+    <div class="drawer-chart-title">8-Day Trend</div>
+    <div class="drawer-bar-chart" id="drawerChart"></div>
+  </div>
+  <div class="drawer-events-header">
+    <div class="drawer-events-title">Click Events</div>
+    <div class="drawer-events-count" id="drawerEventsCount">0 events</div>
+  </div>
+  <div class="drawer-events-scroll" id="drawerEvents"></div>
+</div>
+
+<script>
+  // ── DATA ────────────────────────────────────────────────────
+  const customers = [
+    { id: 'C001', name: 'Sarah Chen',       email: 'sarah@acmecorp.com',     company: 'Acme Corp',       tier: 'enterprise', csm: 'Jake Torres',   mrr: '$12,400', color:'#8B5CF6', clicks: 641, last:'Mar 2, 2026',  health:'high', spark:[3,5,7,6,9,8,10,8], sessions:4, firstSeen:'Feb 17, 2026',
+      events:[
+        { ts:'Mar 2, 2026 · 9:14am',  device:'Mobile',  geo:'San Francisco, US', ref:'Email' },
+        { ts:'Mar 2, 2026 · 9:16am',  device:'Mobile',  geo:'San Francisco, US', ref:'Email' },
+        { ts:'Feb 28, 2026 · 2:03pm', device:'Desktop', geo:'San Francisco, US', ref:'Direct' },
+        { ts:'Feb 24, 2026 · 11:41am',device:'Desktop', geo:'Oakland, US',       ref:'Email' },
+        { ts:'Feb 21, 2026 · 4:30pm', device:'Mobile',  geo:'San Francisco, US', ref:'SMS' },
+        { ts:'Feb 19, 2026 · 8:55am', device:'Tablet',  geo:'San Jose, US',      ref:'Email' },
+      ]},
+    { id: 'C002', name: 'Marcus Williams',  email: 'marcus@globex.io',       company: 'Globex Inc',      tier: 'growth',     csm: 'Priya Patel',   mrr: '$4,200',  color:'#3B82F6', clicks: 388, last:'Mar 1, 2026',  health:'high', spark:[2,4,3,5,4,6,5,7], sessions:3, firstSeen:'Feb 18, 2026',
+      events:[
+        { ts:'Mar 1, 2026 · 3:22pm',  device:'Desktop', geo:'Austin, US',        ref:'Email' },
+        { ts:'Feb 27, 2026 · 10:05am',device:'Mobile',  geo:'Austin, US',        ref:'SMS' },
+        { ts:'Feb 27, 2026 · 10:07am',device:'Mobile',  geo:'Austin, US',        ref:'SMS' },
+        { ts:'Feb 22, 2026 · 1:14pm', device:'Desktop', geo:'Dallas, US',        ref:'Direct' },
+        { ts:'Feb 18, 2026 · 9:00am', device:'Mobile',  geo:'Austin, US',        ref:'Email' },
+      ]},
+    { id: 'C003', name: 'Aisha Okafor',     email: 'aisha@initech.com',      company: 'Initech',         tier: 'enterprise', csm: 'Jake Torres',   mrr: '$9,800',  color:'#EE6123', clicks: 312, last:'Mar 2, 2026',  health:'high', spark:[1,3,4,3,5,6,4,8], sessions:3, firstSeen:'Feb 19, 2026',
+      events:[
+        { ts:'Mar 2, 2026 · 11:30am', device:'Desktop', geo:'New York, US',      ref:'Email' },
+        { ts:'Feb 26, 2026 · 3:45pm', device:'Mobile',  geo:'New York, US',      ref:'Direct' },
+        { ts:'Feb 19, 2026 · 8:12am', device:'Mobile',  geo:'Brooklyn, US',      ref:'Email' },
+        { ts:'Feb 19, 2026 · 8:14am', device:'Mobile',  geo:'Brooklyn, US',      ref:'Email' },
+      ]},
+    { id: 'C004', name: 'Tom Harrington',   email: 'tom@starkind.com',       company: 'Stark Industries', tier: 'enterprise', csm: 'Linda Wu',      mrr: '$18,200', color:'#10B981', clicks: 298, last:'Feb 28, 2026', health:'high', spark:[4,6,5,7,6,5,7,6], sessions:2, firstSeen:'Feb 18, 2026',
+      events:[
+        { ts:'Feb 28, 2026 · 2:50pm', device:'Desktop', geo:'Chicago, US',       ref:'Email' },
+        { ts:'Feb 28, 2026 · 2:53pm', device:'Desktop', geo:'Chicago, US',       ref:'Email' },
+        { ts:'Feb 18, 2026 · 9:30am', device:'Mobile',  geo:'Chicago, US',       ref:'SMS' },
+      ]},
+    { id: 'C005', name: 'Fatima Al-Hassan', email: 'fatima@umbrella.co',     company: 'Umbrella Co',     tier: 'growth',     csm: 'Priya Patel',   mrr: '$3,600',  color:'#EC4899', clicks: 245, last:'Mar 1, 2026',  health:'med',  spark:[2,2,3,4,3,5,4,5], sessions:2, firstSeen:'Feb 20, 2026',
+      events:[
+        { ts:'Mar 1, 2026 · 7:44am',  device:'Mobile',  geo:'Seattle, US',       ref:'SMS' },
+        { ts:'Feb 20, 2026 · 4:10pm', device:'Desktop', geo:'Seattle, US',       ref:'Email' },
+        { ts:'Feb 20, 2026 · 4:12pm', device:'Desktop', geo:'Seattle, US',       ref:'Email' },
+      ]},
+    { id: 'C006', name: 'Devon Park',       email: 'devon@soylent.io',       company: 'Soylent Corp',    tier: 'starter',    csm: 'Linda Wu',      mrr: '$890',    color:'#F59E0B', clicks: 199, last:'Feb 27, 2026', health:'med',  spark:[1,2,1,3,2,4,3,4], sessions:2, firstSeen:'Feb 21, 2026',
+      events:[
+        { ts:'Feb 27, 2026 · 12:05pm',device:'Tablet',  geo:'Los Angeles, US',   ref:'Email' },
+        { ts:'Feb 21, 2026 · 10:22am',device:'Mobile',  geo:'Los Angeles, US',   ref:'Direct' },
+      ]},
+    { id: 'C007', name: 'Rosa Mendes',      email: 'rosa@cyberdyne.io',      company: 'Cyberdyne',       tier: 'enterprise', csm: 'Jake Torres',   mrr: '$22,100', color:'#6366F1', clicks: 187, last:'Mar 2, 2026',  health:'high', spark:[5,4,6,5,7,6,8,7], sessions:2, firstSeen:'Feb 19, 2026',
+      events:[
+        { ts:'Mar 2, 2026 · 6:20pm',  device:'Desktop', geo:'Boston, US',        ref:'Direct' },
+        { ts:'Feb 25, 2026 · 9:38am', device:'Mobile',  geo:'Boston, US',        ref:'Email' },
+        { ts:'Feb 19, 2026 · 2:15pm', device:'Desktop', geo:'Cambridge, US',     ref:'Email' },
+      ]},
+    { id: 'C008', name: 'James Oduya',      email: 'james@veridian.com',     company: 'Veridian',        tier: 'growth',     csm: 'Priya Patel',   mrr: '$5,100',  color:'#14B8A6', clicks: 163, last:'Feb 26, 2026', health:'med',  spark:[2,3,2,4,3,2,4,3], sessions:1, firstSeen:'Feb 22, 2026',
+      events:[
+        { ts:'Feb 26, 2026 · 11:15am',device:'Desktop', geo:'Denver, US',        ref:'Email' },
+        { ts:'Feb 22, 2026 · 3:40pm', device:'Mobile',  geo:'Denver, US',        ref:'SMS' },
+      ]},
+    { id: 'C009', name: 'Lily Zhang',       email: 'lily@umbrellacorp.com',  company: 'Umbrella Corp',   tier: 'growth',     csm: 'Linda Wu',      mrr: '$2,800',  color:'#F97316', clicks: 124, last:'Mar 1, 2026',  health:'med',  spark:[1,2,2,3,2,3,3,4], sessions:1, firstSeen:'Feb 24, 2026',
+      events:[
+        { ts:'Mar 1, 2026 · 5:02pm',  device:'Mobile',  geo:'Miami, US',         ref:'Email' },
+        { ts:'Feb 24, 2026 · 1:28pm', device:'Tablet',  geo:'Miami, US',         ref:'Direct' },
+      ]},
+    { id: 'C010', name: 'Carlos Vega',      email: 'carlos@tyrell.corp',     company: 'Tyrell Corp',     tier: 'enterprise', csm: 'Jake Torres',   mrr: '$14,500', color:'#A78BFA', clicks: 98,  last:'Feb 25, 2026', health:'low',  spark:[3,2,1,2,1,2,1,2], sessions:1, firstSeen:'Feb 23, 2026',
+      events:[
+        { ts:'Feb 25, 2026 · 8:45am', device:'Desktop', geo:'Portland, US',      ref:'Email' },
+      ]},
+    { id: 'C011', name: 'Naomi Osei',       email: 'naomi@weyland.io',       company: 'Weyland Inc',     tier: 'growth',     csm: 'Priya Patel',   mrr: '$3,200',  color:'#34D399', clicks: 71,  last:'Feb 22, 2026', health:'low',  spark:[1,1,2,1,2,1,1,2], sessions:1, firstSeen:'Feb 22, 2026',
+      events:[
+        { ts:'Feb 22, 2026 · 2:17pm', device:'Mobile',  geo:'Atlanta, US',       ref:'SMS' },
+      ]},
+    { id: 'C012', name: 'Ben Nakamura',     email: 'ben@oscorp.com',         company: 'Oscorp',          tier: 'starter',    csm: 'Linda Wu',      mrr: '$420',    color:'#FB923C', clicks: 0,   last:'—',            health:'low',  spark:[0,0,0,0,0,0,0,0], sessions:0, firstSeen:'—',
+      events:[]},
+  ];
+
+  const DEST_URL = 'https://bitly.com/blog/q1-product-update';
+  let selectedIds = new Set();
+  let currentFilter = 'all';
+  let connectedCsm = null;
+
+  // ── MODAL ────────────────────────────────────────────────────
+  function openModal(name, icon, key) {
+    document.getElementById('modalTitle').textContent = 'Connect ' + name;
+    document.getElementById('modalIcon').textContent = icon;
+    document.getElementById('modalConnect').style.display = 'block';
+    document.getElementById('modalSync').style.display = 'none';
+    document.getElementById('modalDone').style.display = 'none';
+    document.getElementById('connectModal').classList.add('open');
+    connectedCsm = key;
+  }
+  function closeModal() {
+    document.getElementById('connectModal').classList.remove('open');
+  }
+  function startSync() {
+    document.getElementById('modalConnect').style.display = 'none';
+    document.getElementById('modalSync').style.display = 'block';
+    const texts = [
+      ['Connecting to Salesforce…', 'Authenticating via OAuth', 10],
+      ['Fetching contacts…', 'Retrieving 312 contact records', 35],
+      ['Syncing accounts…', 'Mapping 89 account relationships', 60],
+      ['Enriching data…', 'Pulling MRR and tier fields', 80],
+      ['Finalizing…', 'Almost done!', 95],
+    ];
+    let i = 0;
+    const bar = document.getElementById('syncBar');
+    const txt = document.getElementById('syncText');
+    const sub = document.getElementById('syncSubtext');
+    function step() {
+      if (i >= texts.length) {
+        bar.style.width = '100%';
+        setTimeout(() => {
+          document.getElementById('modalSync').style.display = 'none';
+          document.getElementById('modalDone').style.display = 'block';
+        }, 400);
+        return;
+      }
+      txt.textContent = texts[i][0];
+      sub.textContent = texts[i][1];
+      bar.style.width = texts[i][2] + '%';
+      i++;
+      setTimeout(step, 700);
+    }
+    step();
+  }
+  function finishConnect() {
+    closeModal();
+    // Mark as connected
+    const key = connectedCsm;
+    document.getElementById('dot-' + key).className = 'status-dot connected';
+    document.getElementById('status-' + key).textContent = 'Connected';
+    document.getElementById('status-' + key).style.color = 'var(--green)';
+    document.getElementById('btn-' + key).textContent = '✓ Connected';
+    document.getElementById('btn-' + key).className = 'connect-btn connected';
+    document.getElementById('card-' + key).className = 'integration-card connected';
+    showPage('builder');
+  }
+
+  // ── PAGE NAV ─────────────────────────────────────────────────
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const map = { integrations: 0, analytics: 0, links: 1, builder: 2 };
+    // update active nav
+    const navLinks = document.querySelectorAll('.nav-link');
+    if (name === 'analytics') navLinks[0].classList.add('active');
+    if (name === 'links') navLinks[1].classList.add('active');
+    if (name === 'integrations') navLinks[2].classList.add('active');
+    if (name === 'builder') navLinks[2].classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ── BUILDER ──────────────────────────────────────────────────
+  function shortLinkFor(c) {
+    const bh = document.getElementById('backHalf')?.value || 'q1-update-';
+    return 'bit.ly/' + bh + c.id.toLowerCase();
+  }
+
+  function updatePreview() {
+    const bh = document.getElementById('backHalf').value;
+    document.getElementById('linkPreview').textContent = 'bit.ly/' + bh + 'c001';
+    // Live-update every preview cell in the customer table
+    document.querySelectorAll('[data-preview]').forEach(td => {
+      const c = customers.find(x => x.id === td.dataset.preview);
+      if (c) td.textContent = shortLinkFor(c);
+    });
+  }
+
+  function insertToken(token) {
+    const el = document.getElementById('backHalf');
+    el.value += token;
+    updatePreview();
+  }
+
+  function toggleUtm() {
+    const t = document.getElementById('utmToggle');
+    const f = document.getElementById('utmFields');
+    t.classList.toggle('on');
+    f.style.display = t.classList.contains('on') ? 'flex' : 'none';
+  }
+
+  let filterVal = 'all';
+  function setFilter(val, el) {
+    filterVal = val;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    renderTable();
+  }
+
+  function filterTable(q) {
+    renderTable(q);
+  }
+
+  function renderTable(query='') {
+    const body = document.getElementById('customerTableBody');
+    const filtered = customers.filter(c => {
+      const matchTier = filterVal === 'all' || c.tier === filterVal;
+      const q = query.toLowerCase();
+      const matchQ = !q || c.name.toLowerCase().includes(q) || c.company.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+      return matchTier && matchQ;
+    });
+    body.innerHTML = filtered.map(c => `
+      <tr class="${selectedIds.has(c.id) ? 'selected' : ''}" onclick="toggleRow('${c.id}', this)">
+        <td class="td-check"><input type="checkbox" ${selectedIds.has(c.id) ? 'checked' : ''} onchange="toggleRow('${c.id}', this.closest('tr'))" onclick="event.stopPropagation()" style="accent-color:var(--orange);" /></td>
+        <td>
+          <div class="td-user">
+            <div class="user-avatar-sm" style="background:${c.color}">${c.name.split(' ').map(n=>n[0]).join('')}</div>
+            <div>
+              <div class="user-name">${c.name}</div>
+              <div class="user-email">${c.email}</div>
+            </div>
+          </div>
+        </td>
+        <td>${c.company}</td>
+        <td><span class="tier-badge tier-${c.tier}">${c.tier.charAt(0).toUpperCase()+c.tier.slice(1)}</span></td>
+        <td style="font-size:12px; color:var(--gray-600);">${c.csm}</td>
+        <td style="font-size:12px; font-weight:600;">${c.mrr}</td>
+        <td data-preview="${c.id}" style="font-family:monospace; font-size:11px; color:var(--orange);">${shortLinkFor(c)}</td>
+      </tr>
+    `).join('');
+    updateSelectedBar();
+  }
+
+  function toggleRow(id, tr) {
+    if (selectedIds.has(id)) { selectedIds.delete(id); tr.classList.remove('selected'); }
+    else { selectedIds.add(id); tr.classList.add('selected'); }
+    tr.querySelector('input[type=checkbox]').checked = selectedIds.has(id);
+    updateSelectedBar();
+  }
+
+  function updateSelectedBar() {
+    const bar = document.getElementById('selectedBar');
+    const btn = document.getElementById('genBtn');
+    const num = selectedIds.size;
+    document.getElementById('selectedNum').textContent = num;
+    document.getElementById('genCount').textContent = num;
+    bar.style.display = num > 0 ? 'flex' : 'none';
+    btn.disabled = num === 0;
+  }
+
+  function selectAll() {
+    customers.forEach(c => selectedIds.add(c.id));
+    renderTable();
+  }
+
+  function toggleSelectAll(cb) {
+    if (cb.checked) customers.forEach(c => selectedIds.add(c.id));
+    else selectedIds.clear();
+    renderTable();
+  }
+
+  function generateLinks() {
+    const selected = customers.filter(c => selectedIds.has(c.id));
+    const body = document.getElementById('generatedLinksBody');
+    body.innerHTML = selected.map(c => `
+      <tr>
+        <td>
+          <div class="td-user">
+            <div class="user-avatar-sm" style="background:${c.color}; width:28px; height:28px; font-size:10px;">${c.name.split(' ').map(n=>n[0]).join('')}</div>
+            <div>
+              <div class="user-name">${c.name}</div>
+              <div class="user-email">${c.email}</div>
+            </div>
+          </div>
+        </td>
+        <td style="font-size:13px;">${c.company}</td>
+        <td><span class="tier-badge tier-${c.tier}">${c.tier.charAt(0).toUpperCase()+c.tier.slice(1)}</span></td>
+        <td class="td-link">${shortLinkFor(c)}</td>
+        <td style="font-size:11px; color:var(--gray-500); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${DEST_URL}</td>
+        <td style="font-size:12px; color:var(--gray-500);">Just now</td>
+        <td><button class="copy-btn" onclick="showToast('Copied ${shortLinkFor(c)}')">📋</button></td>
+      </tr>
+    `).join('');
+    showPage('links');
+  }
+
+  // ── ANALYTICS ────────────────────────────────────────────────
+  function renderAnalytics() {
+    // bar chart
+    const barData = [120, 180, 210, 165, 290, 340, 410, 380, 320, 410, 470, 382, 440, 480];
+    const labels = ['Feb 17','','','','Feb 21','','','','Feb 25','','','Mar 1','','Mar 3'];
+    const max = Math.max(...barData);
+    const chart = document.getElementById('barChart');
+    chart.innerHTML = barData.map((v, i) => `
+      <div class="bar-group">
+        <div class="bar-fill" style="height:${Math.round(v/max*100)}%" title="${v} clicks"></div>
+        <div class="bar-label">${labels[i]}</div>
+      </div>
+    `).join('');
+
+    // attribution table — link ID only, no PII
+    const body = document.getElementById('analyticsBody');
+    const sorted = [...customers].sort((a,b) => b.clicks - a.clicks);
+    body.innerHTML = sorted.map(c => `
+      <tr class="analytics-row-clickable" onclick="openLinkDetail('${c.id}')">
+        <td>
+          <div style="font-family:monospace; font-size:12px; color:var(--orange); font-weight:700;">${shortLinkFor(c)}</div>
+          <div style="font-size:10px; color:var(--gray-400); margin-top:2px;">ID: ${c.id.toLowerCase()}</div>
+        </td>
+        <td style="font-size:14px; font-weight:700; color:var(--gray-900);">${c.clicks.toLocaleString()}</td>
+        <td style="font-size:13px; color:var(--gray-700);">${c.sessions > 0 ? c.sessions : '—'}</td>
+        <td style="font-size:12px; color:var(--gray-500);">${c.firstSeen}</td>
+        <td style="font-size:12px; color:var(--gray-500);">${c.last}</td>
+        <td>
+          <div class="sparkline">
+            ${c.spark.map(v => `<div class="spark-bar" style="height:${Math.max(v,1)/10*24}px"></div>`).join('')}
+          </div>
+        </td>
+        <td style="display:flex; align-items:center; justify-content:space-between;">
+          <span class="status-badge ${c.clicks > 0 ? 'status-clicked' : 'status-pending'}">
+            ${c.clicks > 0 ? '✓ Clicked' : '○ Pending'}
+          </span>
+          <span class="row-chevron">›</span>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── LINK DETAIL DRAWER ───────────────────────────────────────
+  function openLinkDetail(id) {
+    const c = customers.find(x => x.id === id);
+    if (!c) return;
+    const link = shortLinkFor(c);
+
+    // Header
+    document.getElementById('drawerLinkId').textContent = link;
+    document.getElementById('drawerLinkSub').textContent = 'Link ID: ' + c.id.toLowerCase();
+
+    // Stats
+    document.getElementById('drawerClicks').textContent = c.clicks.toLocaleString();
+    document.getElementById('drawerSessions').textContent = c.sessions > 0 ? c.sessions : '—';
+    document.getElementById('drawerFirstSeen').textContent = c.firstSeen;
+
+    // Mini sparkline chart
+    const max = Math.max(...c.spark, 1);
+    const days = ['D1','D2','D3','D4','D5','D6','D7','D8'];
+    document.getElementById('drawerChart').innerHTML = c.spark.map((v, i) => `
+      <div class="drawer-bar-group">
+        <div class="drawer-bar-fill" style="height:${Math.round(v/max*100)}%" title="${v} clicks"></div>
+        <div class="drawer-bar-label">${days[i]}</div>
+      </div>
+    `).join('');
+
+    // Events
+    const eventsEl = document.getElementById('drawerEvents');
+    const countEl = document.getElementById('drawerEventsCount');
+    if (!c.events || c.events.length === 0) {
+      countEl.textContent = '0 events';
+      eventsEl.innerHTML = `
+        <div class="drawer-empty">
+          <div class="drawer-empty-icon">📭</div>
+          <div class="drawer-empty-text">No engagement yet</div>
+          <div class="drawer-empty-sub">This link hasn't been clicked since it was sent.</div>
+        </div>`;
+    } else {
+      countEl.textContent = c.events.length + ' event' + (c.events.length !== 1 ? 's' : '');
+      const deviceIcon = { Mobile: '📱', Desktop: '💻', Tablet: '📟' };
+      const refClass = { Email: 'ref-email', SMS: 'ref-sms', Direct: 'ref-direct' };
+      eventsEl.innerHTML = c.events.map(ev => `
+        <div class="event-row">
+          <div class="event-device-chip">${deviceIcon[ev.device] || '💻'} ${ev.device}</div>
+          <div class="event-details">
+            <div class="event-ts">${ev.ts}</div>
+            <div class="event-meta">${ev.geo} <span class="event-ref ${refClass[ev.ref] || 'ref-direct'}">via ${ev.ref}</span></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Open
+    document.getElementById('linkDrawer').classList.add('open');
+    document.getElementById('drawerBackdrop').classList.add('open');
+  }
+
+  function closeDrawer() {
+    document.getElementById('linkDrawer').classList.remove('open');
+    document.getElementById('drawerBackdrop').classList.remove('open');
+  }
+
+  // ── DISTRIBUTION ─────────────────────────────────────────────
+  function showComposer(channel) {
+    document.getElementById('channelPicker').style.display = channel ? 'none' : 'block';
+    document.getElementById('emailComposer').classList.toggle('visible', channel === 'email');
+    document.getElementById('smsComposer').classList.toggle('visible', channel === 'sms');
+    if (channel === 'email') updateEmailPreview();
+    if (channel === 'sms') updateSmsPreview();
+  }
+
+  function updateEmailPreview() {
+    const body = document.getElementById('emailBody').value;
+    const subject = document.getElementById('emailSubject').value;
+    const link = shortLinkFor(customers[0]);
+    document.getElementById('emailPreviewSubject').innerHTML = '<strong>Subject:</strong> ' + subject;
+    const parts = body.split('{link}');
+    document.getElementById('emailPreviewBody').innerHTML =
+      parts.map(p => p.replace(/\n/g, '<br>')).join('<span class="email-link-pill">' + link + '</span>');
+  }
+
+  function updateSmsPreview() {
+    const raw = document.getElementById('smsBody').value;
+    const link = shortLinkFor(customers[0]);
+    const withoutToken = raw.replace('{link}', '').trim();
+    const charLen = raw.replace('{link}', 'bit.ly/q1-update-c001').length;
+    const el = document.getElementById('smsCharCount');
+    el.textContent = charLen + ' / 160 characters (link counts as ~23 chars)';
+    el.className = 'char-count' + (charLen > 160 ? ' over' : charLen > 130 ? ' warn' : '');
+    document.getElementById('smsPreviewText').textContent = withoutToken + ' ';
+  }
+
+  function sendLinks(channel) {
+    const label = channel === 'email' ? 'Emails sent to 12 customers!' : 'SMS sent to 12 customers!';
+    showToast(label);
+    setTimeout(() => showPage('analytics'), 800);
+  }
+
+  // ── TOAST ────────────────────────────────────────────────────
+  function showToast(msg='Copied to clipboard') {
+    const t = document.getElementById('toast');
+    t.textContent = '✓ ' + msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── INIT ─────────────────────────────────────────────────────
+  renderTable();
+  renderAnalytics();
+  updatePreview();
+</script>
+</body>
+</html>

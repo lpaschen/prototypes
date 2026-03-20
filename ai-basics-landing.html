@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Basics — Free Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0d1b2a;
+      --navy-mid: #1a2d44;
+      --navy-light: #243b55;
+      --blue: #3b82f6;
+      --blue-bright: #60a5fa;
+      --blue-glow: rgba(59, 130, 246, 0.15);
+      --white: #ffffff;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-400: #94a3b8;
+      --gray-600: #475569;
+      --green: #22c55e;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.18);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
+      height: 64px;
+      background: rgba(13, 27, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .nav-logo {
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+      color: var(--white);
+      text-decoration: none;
+    }
+
+    .nav-logo span { color: var(--blue-bright); }
+
+    .nav-cta {
+      background: var(--blue);
+      color: var(--white);
+      border: none;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .nav-cta:hover { background: var(--blue-bright); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 100px 5% 80px;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(59,130,246,0.18) 0%, transparent 70%);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--blue-glow);
+      border: 1px solid rgba(96, 165, 250, 0.3);
+      color: var(--blue-bright);
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      max-width: 700px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 .accent { color: var(--blue-bright); }
+
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--gray-400);
+      max-width: 560px;
+      margin-bottom: 36px;
+    }
+
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+    .btn-primary {
+      display: inline-block;
+      background: var(--blue);
+      color: var(--white);
+      padding: 14px 32px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 0 24px rgba(59,130,246,0.35);
+    }
+
+    .btn-primary:hover {
+      background: var(--blue-bright);
+      transform: translateY(-2px);
+      box-shadow: 0 0 36px rgba(59,130,246,0.5);
+    }
+
+    .btn-ghost {
+      display: inline-block;
+      background: transparent;
+      color: var(--gray-400);
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .btn-ghost:hover { color: var(--white); border-color: rgba(255,255,255,0.3); }
+
+    .hero-social-proof {
+      margin-top: 48px;
+      color: var(--gray-400);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatars { display: flex; }
+    .avatars .av {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--navy);
+      margin-left: -8px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+    .avatars .av:first-child { margin-left: 0; }
+    .av1 { background: #7c3aed; }
+    .av2 { background: #db2777; }
+    .av3 { background: #f59e0b; }
+    .av4 { background: #10b981; }
+
+    /* ── SECTION SHARED ── */
+    section { padding: 96px 5%; }
+
+    .section-label {
+      text-align: center;
+      color: var(--blue-bright);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      text-align: center;
+      color: var(--gray-400);
+      font-size: 1.05rem;
+      max-width: 560px;
+      margin: 0 auto 60px;
+    }
+
+    /* ── FEATURES ── */
+    .features { background: var(--navy-mid); }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--navy);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(96,165,250,0.35);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: var(--blue-glow);
+      border: 1px solid rgba(96,165,250,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      color: var(--gray-400);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    /* ── CHAT DEMO ── */
+    .chat-demo { background: var(--navy); }
+
+    .chat-wrapper {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .chat-window {
+      background: var(--navy-mid);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .chat-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 20px;
+      background: var(--navy-light);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #28c940; }
+
+    .chat-title {
+      margin-left: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gray-400);
+    }
+
+    .chat-messages {
+      height: 360px;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+    .msg {
+      display: flex;
+      gap: 12px;
+      max-width: 85%;
+      animation: msgIn 0.3s ease;
+    }
+
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+    .msg-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .ai-avatar {
+      background: linear-gradient(135deg, var(--blue), #7c3aed);
+    }
+
+    .user-avatar {
+      background: var(--navy-light);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .msg-bubble {
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 0.93rem;
+      line-height: 1.6;
+    }
+
+    .msg.ai .msg-bubble {
+      background: var(--navy-light);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: var(--white);
+      border-top-left-radius: 4px;
+    }
+
+    .msg.user .msg-bubble {
+      background: var(--blue);
+      color: var(--white);
+      border-top-right-radius: 4px;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      max-width: 85%;
+    }
+
+    .typing-indicator.visible { display: flex; animation: msgIn 0.3s ease; }
+
+    .typing-dots {
+      background: var(--navy-light);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      border-top-left-radius: 4px;
+      padding: 14px 18px;
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .typing-dots span {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--gray-400);
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: var(--navy-light);
+    }
+
+    #chat-input {
+      flex: 1;
+      background: var(--navy);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 11px 16px;
+      color: var(--white);
+      font-family: inherit;
+      font-size: 0.93rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #chat-input::placeholder { color: var(--gray-400); }
+    #chat-input:focus { border-color: rgba(96,165,250,0.5); }
+
+    #send-btn {
+      background: var(--blue);
+      border: none;
+      border-radius: 10px;
+      width: 44px; height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    #send-btn:hover { background: var(--blue-bright); }
+
+    #send-btn svg { width: 18px; height: 18px; fill: white; }
+
+    .chat-hint {
+      text-align: center;
+      color: var(--gray-400);
+      font-size: 0.82rem;
+      margin-top: 14px;
+    }
+
+    .chat-hint span {
+      color: var(--blue-bright);
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .chat-hint span:hover { text-decoration: underline; }
+
+    /* ── LEAD CAPTURE ── */
+    .lead-capture {
+      background: var(--navy-mid);
+    }
+
+    .lead-box {
+      max-width: 520px;
+      margin: 0 auto;
+      background: var(--navy);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 48px 40px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .lead-box .guide-preview {
+      width: 72px; height: 88px;
+      background: linear-gradient(135deg, var(--blue), #7c3aed);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(59,130,246,0.3);
+    }
+
+    .lead-box h2 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+
+    .lead-box p {
+      color: var(--gray-400);
+      font-size: 0.95rem;
+      margin-bottom: 32px;
+    }
+
+    .lead-form { display: flex; flex-direction: column; gap: 14px; }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .form-field label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gray-200);
+    }
+
+    .form-field input {
+      background: var(--navy-mid);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--white);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-field input::placeholder { color: var(--gray-400); }
+    .form-field input:focus { border-color: rgba(96,165,250,0.5); }
+    .form-field input.error { border-color: #ef4444; }
+
+    .field-error {
+      font-size: 0.8rem;
+      color: #f87171;
+      display: none;
+    }
+
+    .field-error.visible { display: block; }
+
+    .submit-btn {
+      width: 100%;
+      background: var(--blue);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 0 20px rgba(59,130,246,0.3);
+    }
+
+    .submit-btn:hover {
+      background: var(--blue-bright);
+      transform: translateY(-2px);
+      box-shadow: 0 0 32px rgba(59,130,246,0.5);
+    }
+
+    .form-disclaimer {
+      font-size: 0.78rem;
+      color: var(--gray-400);
+      margin-top: 8px;
+    }
+
+    /* Thank you state */
+    .thankyou {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 0;
+      animation: msgIn 0.4s ease;
+    }
+
+    .thankyou.visible { display: flex; }
+
+    .checkmark {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: rgba(34, 197, 94, 0.15);
+      border: 2px solid var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+    }
+
+    .thankyou h3 {
+      font-size: 1.4rem;
+      font-weight: 800;
+    }
+
+    .thankyou p {
+      color: var(--gray-400);
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--navy);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 32px 5%;
+      text-align: center;
+      color: var(--gray-600);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--gray-400); text-decoration: none; }
+    footer a:hover { color: var(--white); }
+
+    /* ── FADE IN ANIMATION ── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      section { padding: 72px 5%; }
+      .lead-box { padding: 36px 24px; }
+      .chat-messages { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#" class="nav-logo">AI<span>Basics</span></a>
+    <a href="#get-guide" class="nav-cta">Get Free Guide</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge">✦ Free Downloadable Guide</div>
+    <h1>Understand <span class="accent">Artificial Intelligence</span><br/>in Plain English</h1>
+    <p>No jargon, no hype. A clear, beginner-friendly guide that explains what AI actually is, how it works, and how it's changing the world.</p>
+    <div class="hero-actions">
+      <a href="#get-guide" class="btn-primary">Get the Free Guide →</a>
+      <a href="#chat-demo" class="btn-ghost">Try the AI Demo</a>
+    </div>
+    <div class="hero-social-proof">
+      <div class="avatars">
+        <div class="av av1">S</div>
+        <div class="av av2">M</div>
+        <div class="av av3">J</div>
+        <div class="av av4">R</div>
+      </div>
+      <span>Join 2,400+ readers learning AI basics</span>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features">
+    <p class="section-label fade-in">What's inside</p>
+    <h2 class="section-title fade-in">Everything you need to understand AI</h2>
+    <p class="section-sub fade-in">Five chapters. Zero prerequisites. By the end, you'll confidently explain AI to anyone.</p>
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <div class="feature-icon">🤖</div>
+        <h3>What Is AI, Really?</h3>
+        <p>Cut through the buzzwords and understand what artificial intelligence actually means — and what it doesn't.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">🧠</div>
+        <h3>How Large Language Models Work</h3>
+        <p>Discover how tools like ChatGPT and Claude generate text — and why they sometimes get things wrong.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">📊</div>
+        <h3>Machine Learning Explained</h3>
+        <p>Learn how computers learn from data without being explicitly programmed — with real-world examples.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">✍️</div>
+        <h3>The Art of Prompting</h3>
+        <p>Master the skill of writing effective prompts to get better results from any AI tool you use.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">🌍</div>
+        <h3>Real-World AI Applications</h3>
+        <p>See how AI is being used today in healthcare, business, education, creativity, and more.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">⚖️</div>
+        <h3>Ethics &amp; What to Watch For</h3>
+        <p>Understand bias, hallucinations, and the key questions society needs to answer about AI's future.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHAT DEMO -->
+  <section class="chat-demo" id="chat-demo">
+    <p class="section-label fade-in">Interactive demo</p>
+    <h2 class="section-title fade-in">Ask an AI about AI</h2>
+    <p class="section-sub fade-in">Get a feel for how conversational AI works. Type any question about artificial intelligence below.</p>
+    <div class="chat-wrapper fade-in">
+      <div class="chat-window">
+        <div class="chat-titlebar">
+          <div class="dot dot-red"></div>
+          <div class="dot dot-yellow"></div>
+          <div class="dot dot-green"></div>
+          <span class="chat-title">AI Basics Assistant</span>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="msg ai">
+            <div class="msg-avatar ai-avatar">✦</div>
+            <div class="msg-bubble">Hi! I'm here to help you understand AI. Try asking me something like <strong>"What is machine learning?"</strong> or <strong>"How do LLMs work?"</strong> 🚀</div>
+          </div>
+        </div>
+        <div class="typing-indicator" id="typing">
+          <div class="msg-avatar ai-avatar">✦</div>
+          <div class="typing-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Ask anything about AI…" autocomplete="off" />
+          <button id="send-btn" aria-label="Send">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <p class="chat-hint">
+        Not sure what to ask? Try:
+        <span onclick="fillChat('What is a neural network?')">neural networks</span> ·
+        <span onclick="fillChat('How does machine learning work?')">machine learning</span> ·
+        <span onclick="fillChat('What is prompt engineering?')">prompt engineering</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- LEAD CAPTURE -->
+  <section class="lead-capture" id="get-guide">
+    <div class="lead-box fade-in">
+      <div class="guide-preview">📘</div>
+      <h2>Get Your Free Guide</h2>
+      <p>Enter your name and email and we'll send the complete AI Basics guide straight to your inbox — no spam, ever.</p>
+
+      <form class="lead-form" id="lead-form" novalidate>
+        <div class="form-field">
+          <label for="first-name">First Name</label>
+          <input type="text" id="first-name" placeholder="Jane" autocomplete="given-name" />
+          <span class="field-error" id="name-error">Please enter your first name.</span>
+        </div>
+        <div class="form-field">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="jane@example.com" autocomplete="email" />
+          <span class="field-error" id="email-error">Please enter a valid email address.</span>
+        </div>
+        <button type="submit" class="submit-btn">Send Me the Guide →</button>
+        <p class="form-disclaimer">🔒 Your info is safe. We never share or sell your email.</p>
+      </form>
+
+      <div class="thankyou" id="thankyou">
+        <div class="checkmark">✓</div>
+        <h3>You're all set!</h3>
+        <p>Check your inbox — your AI Basics guide is on its way. Can't wait? Start exploring with the chat demo above.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>© 2026 AI Basics · <a href="#">Privacy Policy</a> · <a href="#">Unsubscribe</a></p>
+  </footer>
+
+  <script>
+    // ── SCROLL FADE-IN ──────────────────────────────────────────
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // ── CHAT DEMO ───────────────────────────────────────────────
+    const RESPONSES = [
+      {
+        patterns: ['what is ai', 'what is artificial intelligence', 'define ai', 'explain ai'],
+        reply: 'Artificial Intelligence (AI) refers to computer systems that can perform tasks that typically require human intelligence — like understanding language, recognizing images, or making decisions. Modern AI is mostly powered by machine learning, where systems learn patterns from large amounts of data rather than being manually programmed with rules.'
+      },
+      {
+        patterns: ['llm', 'large language model', 'language model'],
+        reply: 'A Large Language Model (LLM) is a type of AI trained on massive amounts of text. It learns statistical patterns in language so well that it can generate coherent, helpful responses. LLMs like GPT or Claude don\'t "know" things the way humans do — they predict what words are most likely to come next based on context. That\'s why they can be remarkably helpful but also occasionally wrong.'
+      },
+      {
+        patterns: ['chatgpt', 'claude', 'gemini', 'gpt', 'ai assistant', 'ai chat'],
+        reply: 'AI assistants like ChatGPT (OpenAI), Claude (Anthropic), and Gemini (Google) are products built on top of large language models. Each has its own personality, strengths, and safety guidelines. They\'re all remarkably capable at writing, summarizing, coding, analysis, and Q&A — but they can also make confident-sounding mistakes, so it\'s important to verify critical information.'
+      },
+      {
+        patterns: ['machine learning', 'ml', 'how do machines learn'],
+        reply: 'Machine learning is the core technique behind most modern AI. Instead of programming explicit rules, you feed a system lots of labeled examples and it finds patterns on its own. For instance, to teach an AI to recognize cats, you show it millions of cat photos. Over time it learns which pixel patterns correspond to "cat." The same principle powers recommendation engines, fraud detection, and language models.'
+      },
+      {
+        patterns: ['neural network', 'neural net', 'deep learning', 'neurons'],
+        reply: 'Neural networks are computing systems loosely inspired by the human brain. They consist of layers of interconnected nodes (like neurons) that transform input data into output predictions. "Deep learning" just means neural networks with many layers. They\'re extraordinarily good at recognizing patterns in images, audio, and text — and they\'re the engine behind most cutting-edge AI today.'
+      },
+      {
+        patterns: ['prompt', 'prompting', 'prompt engineering', 'how to talk to ai'],
+        reply: 'Prompt engineering is the skill of crafting your inputs to get the best output from an AI. Tips: (1) Be specific — vague questions get vague answers. (2) Give context — tell the AI your role or goal. (3) Ask for a format — "explain in bullet points" or "write in simple language." (4) Iterate — if the first answer misses, refine your question. It\'s more of an art than a science, and you\'ll improve quickly with practice.'
+      },
+      {
+        patterns: ['bias', 'hallucination', 'wrong', 'mistake', 'error', 'unreliable'],
+        reply: 'Great question — AI has real limitations. Hallucination is when an AI confidently states something false. This happens because LLMs predict plausible-sounding text rather than retrieving verified facts. Bias occurs when training data reflects historical prejudices, and the model inherits them. Always verify AI-generated facts for anything important, and treat AI as a helpful assistant, not an oracle.'
+      },
+      {
+        patterns: ['ethics', 'danger', 'risk', 'safe', 'safety', 'concern'],
+        reply: 'AI ethics is one of the most important conversations happening right now. Key concerns include: bias and fairness (does it work equally well for everyone?), privacy (what data is being used?), job displacement (what work will be automated?), misinformation (deepfakes, AI-written spam), and concentration of power (a few companies control the most powerful models). Responsible AI development means thinking about these issues proactively.'
+      },
+      {
+        patterns: ['train', 'training', 'how is ai trained', 'how do you train'],
+        reply: 'Training an AI model involves exposing it to massive datasets and adjusting its internal parameters to minimize errors. For LLMs, this means processing hundreds of billions of words from the internet, books, and code. The process uses an algorithm called gradient descent to nudge the model toward better predictions. Training large models can take weeks on thousands of specialized chips — it\'s incredibly resource-intensive.'
+      },
+    ];
+
+    function getResponse(text) {
+      const lower = text.toLowerCase();
+      for (const entry of RESPONSES) {
+        if (entry.patterns.some(p => lower.includes(p))) {
+          return entry.reply;
+        }
+      }
+      return "That's a great question! It's a bit outside my demo scope, but the full AI Basics guide dives deep into topics just like this. Grab your free copy below — it covers everything from foundational concepts to real-world applications. 👇";
+    }
+
+    function appendMessage(role, text) {
+      const messages = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      const avatarContent = role === 'ai' ? '✦' : '👤';
+      const avatarClass = role === 'ai' ? 'ai-avatar' : 'user-avatar';
+      div.innerHTML = `
+        <div class="msg-avatar ${avatarClass}">${avatarContent}</div>
+        <div class="msg-bubble">${text}</div>
+      `;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function showTyping() {
+      const typing = document.getElementById('typing');
+      const messages = document.getElementById('chat-messages');
+      typing.classList.add('visible');
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function hideTyping() {
+      document.getElementById('typing').classList.remove('visible');
+    }
+
+    function sendMessage(text) {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      appendMessage('user', trimmed);
+      document.getElementById('chat-input').value = '';
+
+      const delay = 800 + Math.random() * 600;
+      showTyping();
+
+      setTimeout(() => {
+        hideTyping();
+        appendMessage('ai', getResponse(trimmed));
+      }, delay);
+    }
+
+    document.getElementById('send-btn').addEventListener('click', () => {
+      sendMessage(document.getElementById('chat-input').value);
+    });
+
+    document.getElementById('chat-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage(e.target.value);
+      }
+    });
+
+    function fillChat(text) {
+      const input = document.getElementById('chat-input');
+      input.value = text;
+      input.focus();
+      document.getElementById('chat-demo').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── LEAD FORM ───────────────────────────────────────────────
+    document.getElementById('lead-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const nameInput = document.getElementById('first-name');
+      const emailInput = document.getElementById('email');
+      const nameError = document.getElementById('name-error');
+      const emailError = document.getElementById('email-error');
+      let valid = true;
+
+      // Reset
+      nameInput.classList.remove('error');
+      emailInput.classList.remove('error');
+      nameError.classList.remove('visible');
+      emailError.classList.remove('visible');
+
+      if (!nameInput.value.trim()) {
+        nameInput.classList.add('error');
+        nameError.classList.add('visible');
+        valid = false;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailInput.value.trim())) {
+        emailInput.classList.add('error');
+        emailError.classList.add('visible');
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      // Show thank you
+      this.style.display = 'none';
+      document.getElementById('thankyou').classList.add('visible');
+    });
+  </script>
+</body>
+</html>

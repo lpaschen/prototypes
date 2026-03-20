@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitly Analytics — Tag View</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;display:flex;height:100vh;overflow:hidden;color:#111827}
+
+/* ── SIDEBAR ── */
+.sidebar{width:60px;background:#0d1b3e;display:flex;flex-direction:column;align-items:center;padding:14px 0;flex-shrink:0;z-index:100}
+.sb-logo{width:34px;height:34px;background:#ff6b00;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:17px;margin-bottom:20px;cursor:pointer;letter-spacing:-1px}
+.sb-nav{display:flex;flex-direction:column;gap:2px;width:100%;padding:0 8px}
+.sb-item{width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#5a6fa5;cursor:pointer;transition:all .15s;position:relative}
+.sb-item:hover{background:rgba(255,255,255,.08);color:#a0b0d0}
+.sb-item.active{background:rgba(255,255,255,.14);color:white}
+.sb-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sb-bottom{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:0 8px}
+
+/* ── MAIN LAYOUT ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ── HEADER ── */
+.page-header{background:white;border-bottom:1px solid #e5e7eb;padding:14px 24px 0;flex-shrink:0}
+.breadcrumb{font-size:12px;color:#6b7280;margin-bottom:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.breadcrumb:hover{color:#1e73f8}
+.title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.title-row h1{font-size:21px;font-weight:700;color:#111827;display:flex;align-items:center;gap:8px}
+.edit-icon{font-size:13px;color:#9ca3af;cursor:pointer}
+.edit-icon:hover{color:#1e73f8}
+.header-actions{display:flex;gap:8px;align-items:center}
+.btn{padding:7px 13px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid #d1d5db;background:white;color:#374151;display:inline-flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#f9fafb;border-color:#9ca3af}
+.btn-primary{background:#1e73f8;color:white;border-color:#1e73f8}
+.btn-primary:hover{background:#1a65e0;border-color:#1a65e0}
+.toolbar{display:flex;align-items:center;gap:10px;padding-bottom:11px;flex-wrap:wrap}
+.date-range{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:12.5px;color:#374151;cursor:pointer;background:white;white-space:nowrap}
+.date-range:hover{border-color:#1e73f8}
+.filter-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:12.5px;color:#374151;cursor:pointer;background:white}
+.filter-btn:hover{border-color:#1e73f8}
+.showing-label{font-size:11.5px;color:#9ca3af;flex:1}
+
+/* ── TAG BAR (NEW FEATURE) ── */
+.tag-bar{display:flex;align-items:center;gap:7px;padding:9px 0 0;border-top:1px solid #f3f4f6;flex-wrap:wrap}
+.tag-bar-label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-right:2px;white-space:nowrap}
+.tag-pill{padding:5px 13px;border-radius:999px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid #e5e7eb;background:white;color:#374151;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tag-pill:hover{border-color:#1e73f8;color:#1e73f8}
+.tag-pill.active{background:#1e73f8;color:white;border-color:#1e73f8}
+.tag-pill.compare-active{background:#f97316;color:white;border-color:#f97316}
+.tag-pill .pill-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7}
+.new-badge{display:inline-flex;align-items:center;padding:1px 5px;background:#dcfce7;color:#16a34a;font-size:9px;font-weight:700;border-radius:4px;letter-spacing:.05em;text-transform:uppercase;margin-left:2px}
+.compare-btn{margin-left:auto;padding:5px 13px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid #e5e7eb;background:white;color:#6b7280;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.compare-btn:hover{border-color:#374151;color:#374151}
+.compare-btn.active{background:#fff7ed;border-color:#f97316;color:#ea580c}
+
+/* ── COMPARE PICKER BANNER ── */
+.compare-picker{display:none;padding:8px 24px;background:#fffbf5;border-bottom:1px solid #fed7aa;align-items:center;gap:10px;font-size:12.5px;color:#374151}
+.compare-picker.visible{display:flex}
+.compare-picker-label{font-weight:600;color:#ea580c}
+.compare-cancel-link{margin-left:auto;font-size:12px;color:#6b7280;cursor:pointer;text-decoration:underline}
+.compare-cancel-link:hover{color:#111827}
+
+/* ── CANVAS ── */
+.canvas{flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:14px}
+.canvas::-webkit-scrollbar{width:4px}
+.canvas::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:2px}
+
+/* ── STAT CARDS ROW ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat-card{background:white;border-radius:12px;padding:15px 18px;border:1px solid #e5e7eb;transition:all .2s}
+.stat-label{font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.stat-value{font-size:24px;font-weight:700;color:#111827;line-height:1.1}
+.stat-sub{font-size:11.5px;color:#6b7280;margin-top:4px}
+.stat-delta{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:#10b981;margin-top:3px}
+.stat-delta.down{color:#ef4444}
+
+/* ── CARDS GRID ── */
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:white;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;transition:opacity .2s}
+.card.fading{opacity:.4}
+.card-header{display:flex;align-items:center;gap:8px;padding:13px 15px 0;margin-bottom:2px}
+.drag-handle{color:#d1d5db;font-size:13px;cursor:grab}
+.card-title{font-size:12.5px;font-weight:600;color:#111827;flex:1}
+.card-action{color:#d1d5db;cursor:pointer;border:none;background:none;font-size:13px;padding:2px;line-height:1}
+.card-action:hover{color:#6b7280}
+.card-body{padding:10px 15px 15px}
+
+/* ── DONUT CHART LAYOUT ── */
+.donut-layout{display:flex;align-items:center;gap:18px}
+.donut-wrap{position:relative;width:150px;height:150px;flex-shrink:0}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-center-val{font-size:20px;font-weight:700;color:#111827}
+.donut-center-lbl{font-size:9px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.ref-list{flex:1;min-width:0}
+.ref-item{display:flex;align-items:center;gap:7px;padding:4.5px 0;font-size:12.5px;color:#374151;border-bottom:1px solid #f9fafb}
+.ref-item:last-child{border-bottom:none}
+.ref-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ref-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ref-val{font-weight:600;color:#111827;font-size:12.5px;min-width:32px;text-align:right}
+
+/* ── TABLES ── */
+.dtable{width:100%;border-collapse:collapse}
+.dtable th{font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:5px 6px;border-bottom:1px solid #f3f4f6}
+.dtable th.r{text-align:right}
+.dtable td{font-size:12.5px;color:#374151;padding:7px 6px;border-bottom:1px solid #f9fafb;vertical-align:middle}
+.dtable tr:last-child td{border-bottom:none}
+.dtable td.lnk{color:#1e73f8;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtable td.lnk:hover{text-decoration:underline}
+.dtable td.num{font-weight:600;color:#111827;text-align:right}
+.dtable td.pct{color:#9ca3af;text-align:right;font-size:11.5px}
+.icon-badge{display:inline-flex;gap:2px}
+.ico{width:14px;height:14px;background:#f3f4f6;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:7.5px;color:#6b7280;border:1px solid #e5e7eb}
+
+/* ── TABS ── */
+.tab-bar{display:flex;border-bottom:1px solid #f3f4f6;margin-bottom:8px}
+.tab{padding:5px 14px;font-size:12.5px;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab.active{color:#1e73f8;border-bottom-color:#1e73f8;font-weight:500}
+.tab:hover:not(.active){color:#374151}
+
+/* ── COMPARISON LAYOUT ── */
+.compare-summary-card{background:white;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden}
+.compare-summary-header{padding:12px 15px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:10px}
+.compare-summary-title{font-size:12.5px;font-weight:600;color:#111827;flex:1}
+.compare-tag-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600}
+.compare-tag-chip.a{background:#eff6ff;color:#1e73f8}
+.compare-tag-chip.b{background:#fff7ed;color:#ea580c}
+.vs-pill{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em}
+.compare-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#f3f4f6}
+.cmc{background:white;padding:13px 16px}
+.cmc.col-header{background:#fafafa;padding:10px 16px;border-bottom:1px solid #f3f4f6}
+.cmc-tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:5px}
+.cmc-tag .dot{width:8px;height:8px;border-radius:50%}
+.cmc-label{font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.cmc-value{font-size:19px;font-weight:700;color:#111827}
+.cmc-sub{font-size:11px;color:#6b7280;margin-top:2px}
+.cmc-win{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:4px;background:#dcfce7;color:#16a34a;display:inline-block;margin-top:4px}
+.cmc-lose{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:4px;background:#fef2f2;color:#dc2626;display:inline-block;margin-top:4px}
+
+.compare-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.compare-col-header{display:flex;align-items:center;gap:7px;padding:10px 15px;font-size:12px;font-weight:600;border-bottom:1px solid #f3f4f6}
+.compare-col-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+/* ── AI PANEL ── */
+.ai-fab{position:fixed;bottom:22px;right:22px;background:linear-gradient(135deg,#1e73f8,#7c3aed);color:white;border:none;border-radius:22px;padding:11px 18px;font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 18px rgba(30,115,248,.38);transition:all .2s;z-index:200}
+.ai-fab:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(30,115,248,.48)}
+.ai-fab.shifted{right:400px}
+.ai-panel{position:fixed;right:-382px;top:0;bottom:0;width:382px;background:white;border-left:1px solid #e5e7eb;display:flex;flex-direction:column;transition:right .28s ease;z-index:180;box-shadow:-4px 0 24px rgba(0,0,0,.07)}
+.ai-panel.open{right:0}
+.ai-ph{padding:14px 18px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:8px}
+.ai-ph-title{font-size:14px;font-weight:700;color:#111827;flex:1;display:flex;align-items:center;gap:6px}
+.ai-context-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;background:#eff6ff;color:#1e73f8;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-close-btn{color:#9ca3af;cursor:pointer;background:none;border:none;font-size:17px;line-height:1;padding:2px}
+.ai-close-btn:hover{color:#374151}
+.ai-msgs{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px}
+.ai-msgs::-webkit-scrollbar{width:3px}
+.ai-msgs::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:2px}
+.ai-msg{display:flex;flex-direction:column;gap:4px}
+.ai-msg.user{align-items:flex-end}
+.ai-msg.assistant{align-items:flex-start}
+.msg-sender{font-size:10.5px;color:#9ca3af;font-weight:500}
+.msg-bubble{max-width:290px;padding:9px 13px;border-radius:12px;font-size:12.5px;line-height:1.55}
+.ai-msg.user .msg-bubble{background:#1e73f8;color:white;border-bottom-right-radius:3px}
+.ai-msg.assistant .msg-bubble{background:#f9fafb;color:#374151;border:1px solid #e5e7eb;border-bottom-left-radius:3px}
+.typing-bubble{display:flex;gap:4px;padding:10px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;border-bottom-left-radius:3px;width:56px}
+.typing-dot{width:6px;height:6px;background:#9ca3af;border-radius:50%;animation:bounce 1.2s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}}
+.ai-suggestions{padding:0 16px 8px;display:flex;flex-wrap:wrap;gap:5px}
+.ai-chip{padding:4px 10px;border-radius:999px;font-size:11px;border:1px solid #e5e7eb;cursor:pointer;color:#6b7280;background:white;transition:all .15s;white-space:nowrap}
+.ai-chip:hover{border-color:#1e73f8;color:#1e73f8;background:#eff6ff}
+.ai-input-row{padding:10px 14px;border-top:1px solid #f3f4f6;display:flex;gap:8px}
+.ai-textarea{flex:1;padding:8px 11px;border:1px solid #e5e7eb;border-radius:8px;font-size:12.5px;outline:none;resize:none;font-family:inherit;line-height:1.4;height:36px;overflow:hidden}
+.ai-textarea:focus{border-color:#1e73f8}
+.ai-send-btn{width:36px;height:36px;background:#1e73f8;color:white;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+.ai-send-btn:hover{background:#1a65e0}
+
+/* transitions */
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ai-msg{animation:fadeIn .2s ease}
+.stat-card{animation:fadeIn .18s ease}
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="sb-logo">b</div>
+  <nav class="sb-nav">
+    <div class="sb-item" title="Home">
+      <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+    </div>
+    <div class="sb-item" title="Links">
+      <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+    </div>
+    <div class="sb-item" title="QR Codes">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3m0 4v-4h4M14 21h4"/></svg>
+    </div>
+    <div class="sb-item" title="Pages">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
+    </div>
+    <div class="sb-item active" title="Analytics">
+      <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+    </div>
+    <div class="sb-item" title="Campaigns">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+    <div class="sb-item" title="Integrations">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+    </div>
+  </nav>
+  <div class="sb-bottom">
+    <div class="sb-item" title="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- HEADER -->
+  <header class="page-header">
+    <div class="breadcrumb">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      Dashboards
+    </div>
+    <div class="title-row">
+      <h1>Analytics <span class="edit-icon">✏</span></h1>
+      <div class="header-actions">
+        <button class="btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PDF
+        </button>
+        <button class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add module
+        </button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="date-range">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        01/01/2024 &nbsp;→&nbsp; 02/01/2024
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="filter-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        Add filters
+      </div>
+      <span class="showing-label" id="showingLabel">Showing data for all links and QR Codes</span>
+    </div>
+
+    <!-- TAG BAR — NEW FEATURE -->
+    <div class="tag-bar">
+      <span class="tag-bar-label">Tag</span>
+      <button class="tag-pill active" data-tag="all" onclick="selectTag('all')">All Links</button>
+      <button class="tag-pill" data-tag="email" onclick="selectTag('email')">
+        <span class="pill-dot"></span>Email Campaign
+      </button>
+      <button class="tag-pill" data-tag="social" onclick="selectTag('social')">
+        <span class="pill-dot"></span>Social
+      </button>
+      <button class="tag-pill" data-tag="q1launch" onclick="selectTag('q1launch')">
+        <span class="pill-dot"></span>Q1 Launch
+      </button>
+      <span class="new-badge">NEW</span>
+      <button class="compare-btn" id="compareBtn" onclick="toggleCompareMode()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8L22 12L18 16M6 8L2 12L6 16"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        Compare Tags
+      </button>
+    </div>
+  </header>
+
+  <!-- COMPARE PICKER BANNER -->
+  <div class="compare-picker" id="comparePicker">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span class="compare-picker-label">Comparing:</span>
+    <span id="compareTagALabel" style="font-weight:600;color:#1e73f8"></span>
+    <span style="color:#9ca3af">vs.</span>
+    <span>Select a second tag to compare →</span>
+    <span class="compare-cancel-link" onclick="cancelCompare()">Cancel</span>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas" id="canvas">
+    <!-- rendered by JS -->
+  </div>
+
+</div><!-- end .main -->
+
+<!-- ── AI ASSIST FAB + PANEL ── -->
+<button class="ai-fab" id="aiFab" onclick="toggleAI()">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 110 20 10 10 0 010-20z"/><path d="M8 12s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+  AI Assist
+</button>
+
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-ph">
+    <div class="ai-ph-title">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      AI Assist
+    </div>
+    <div class="ai-context-chip" id="aiContextChip">All Links</div>
+    <button class="ai-close-btn" onclick="toggleAI()">✕</button>
+  </div>
+  <div class="ai-msgs" id="aiMsgs"></div>
+  <div class="ai-suggestions" id="aiSuggestions"></div>
+  <div class="ai-input-row">
+    <textarea class="ai-textarea" id="aiInput" placeholder="Ask about this tag…" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"></textarea>
+    <button class="ai-send-btn" onclick="sendAI()">→</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+//  MOCK DATA
+// ─────────────────────────────────────────────────────────
+const DATES = ['Jan 1','Jan 2','Jan 3','Jan 4','Jan 5','Jan 6','Jan 7','Jan 8','Jan 9','Jan 10','Jan 11','Jan 12','Jan 13','Jan 14'];
+
+const DATA = {
+  all: {
+    label: 'All Links',
+    total: 819, links: 47, growth: '+12%', growthUp: true, topReferrer: 'Google', topCountry: 'United States',
+    timeSeries: [28,35,40,48,60,45,68,75,62,50,65,58,88,97],
+    referrers: [
+      {name:'Google',      value:402, color:'#00c4b3'},
+      {name:'LinkedIn',    value:218, color:'#8b5cf6'},
+      {name:'Facebook',    value:106, color:'#f97316'},
+      {name:'Unknown',     value: 70, color:'#d1d5db'},
+      {name:'Reddit',      value: 18, color:'#ef4444'},
+      {name:'Instagram',   value:  5, color:'#ec4899'},
+    ],
+    topLinks: [
+      {types:['link'],      title:'Summer campaign',          eng:320, pct:'40%'},
+      {types:['qr'],        title:'Menu poster',              eng:176, pct:'22%'},
+      {types:['link','qr'], title:'Spring promo',             eng: 84, pct:'14%'},
+      {types:['link'],      title:'bit.ly/mktg-campaign',     eng: 48, pct: '8%'},
+      {types:['qr'],        title:'example.com/lunch-menu',   eng: 37, pct: '7%'},
+      {types:['link'],      title:'bit.ly/pizza-pizza',       eng: 30, pct: '5%'},
+    ],
+    countries:[
+      {name:'United States', eng:176, pct:'52%'},
+      {name:'Germany',       eng: 72, pct:'21%'},
+      {name:'Mexico',        eng: 48, pct:'14%'},
+      {name:'Ireland',       eng: 22, pct: '7%'},
+      {name:'United Kingdom',eng: 10, pct: '3%'},
+      {name:'Brazil',        eng:  5, pct: '2%'},
+    ],
+    cities:[
+      {name:'New York, US',    eng: 82, pct:'24%'},
+      {name:'Berlin, DE',      eng: 45, pct:'13%'},
+      {name:'Mexico City, MX', eng: 38, pct:'11%'},
+      {name:'Dublin, IE',      eng: 22, pct: '6%'},
+      {name:'London, UK',      eng: 10, pct: '3%'},
+    ],
+    aiIntro: "You're viewing aggregate data across all 47 links. Here's what stands out:",
+    aiInsights: [
+      "Google drives 49% of all traffic — nearly double LinkedIn at 27%. This suggests strong SEO or paid search investment.",
+      "Engagements peaked on Jan 14 (97) — that's 246% higher than your Jan 1 baseline. A specific link or campaign likely spiked that day.",
+      "United States accounts for 52% of traffic, but Germany and Mexico together add another 35%. Consider geo-targeting these markets.",
+    ]
+  },
+  email: {
+    label: 'Email Campaign',
+    total: 1485, links: 12, growth: '+22%', growthUp: true, topReferrer: 'Direct', topCountry: 'United States',
+    timeSeries: [85,92,88,95,102,98,110,118,115,125,132,128,140,157],
+    referrers: [
+      {name:'Direct',   value:520, color:'#00c4b3'},
+      {name:'Email',    value:445, color:'#8b5cf6'},
+      {name:'Google',   value:297, color:'#1e73f8'},
+      {name:'LinkedIn', value:149, color:'#f97316'},
+      {name:'Other',    value: 74, color:'#d1d5db'},
+    ],
+    topLinks: [
+      {types:['link'], title:'Monthly Newsletter — Jan',    eng:420, pct:'28%'},
+      {types:['link'], title:'Product Update Email',        eng:385, pct:'26%'},
+      {types:['link'], title:'Promo Blast — 20% Off',       eng:310, pct:'21%'},
+      {types:['link'], title:'Re-engagement Campaign',      eng:225, pct:'15%'},
+      {types:['link'], title:'Welcome Series — Step 3',     eng:145, pct:'10%'},
+    ],
+    countries:[
+      {name:'United States',  eng:713, pct:'48%'},
+      {name:'Germany',        eng:267, pct:'18%'},
+      {name:'United Kingdom', eng:178, pct:'12%'},
+      {name:'Canada',         eng:119, pct: '8%'},
+      {name:'France',         eng: 89, pct: '6%'},
+      {name:'Other',          eng:119, pct: '8%'},
+    ],
+    cities:[
+      {name:'New York, US', eng:245, pct:'16%'},
+      {name:'Berlin, DE',   eng:142, pct:'10%'},
+      {name:'London, UK',   eng:118, pct: '8%'},
+      {name:'Munich, DE',   eng: 98, pct: '7%'},
+      {name:'Toronto, CA',  eng: 89, pct: '6%'},
+    ],
+    aiIntro: "Analyzing Email Campaign tag (12 links, 1,485 total engagements). Key findings:",
+    aiInsights: [
+      "Steady 22% growth over 14 days — the most consistent growth of any tag. No single viral spike, just reliable compounding.",
+      "Direct + Email referrers account for 65% of traffic, confirming strong list health. Your subscribers are clicking through directly.",
+      "Jan 13 (140) and Jan 14 (157) are your top days — these likely correspond to a send. Consider making Monday/Tuesday sends a recurring pattern.",
+    ]
+  },
+  social: {
+    label: 'Social',
+    total: 1303, links: 18, growth: '+379%', growthUp: true, topReferrer: 'LinkedIn', topCountry: 'United States',
+    timeSeries: [42,38,95,72,48,62,188,145,62,48,72,88,142,201],
+    referrers: [
+      {name:'LinkedIn',  value:468, color:'#1e73f8'},
+      {name:'Facebook',  value:326, color:'#3b82f6'},
+      {name:'Twitter/X', value:261, color:'#00c4b3'},
+      {name:'Instagram', value:157, color:'#ec4899'},
+      {name:'TikTok',    value: 91, color:'#8b5cf6'},
+    ],
+    topLinks: [
+      {types:['link'], title:'LinkedIn: Product Launch Post',   eng:368, pct:'28%'},
+      {types:['link'], title:'Facebook Ad — Retargeting',       eng:289, pct:'22%'},
+      {types:['link'], title:'LinkedIn Article — Industry Rpt', eng:237, pct:'18%'},
+      {types:['link'], title:'Twitter Thread: Q1 Goals',        eng:234, pct:'18%'},
+      {types:['link'], title:'IG Bio Link',                     eng:175, pct:'13%'},
+    ],
+    countries:[
+      {name:'United States',  eng:521, pct:'40%'},
+      {name:'Germany',        eng:234, pct:'18%'},
+      {name:'Brazil',         eng:157, pct:'12%'},
+      {name:'United Kingdom', eng:130, pct:'10%'},
+      {name:'India',          eng: 91, pct: '7%'},
+      {name:'Other',          eng:170, pct:'13%'},
+    ],
+    cities:[
+      {name:'New York, US',    eng:156, pct:'12%'},
+      {name:'Berlin, DE',     eng:112, pct: '9%'},
+      {name:'São Paulo, BR',  eng: 98, pct: '8%'},
+      {name:'London, UK',     eng: 85, pct: '7%'},
+      {name:'Mumbai, IN',     eng: 68, pct: '5%'},
+    ],
+    aiIntro: "Analyzing Social tag (18 links, 1,303 engagements). The data has a clear story:",
+    aiInsights: [
+      "Jan 7 (188) is a major outlier — 4.5x your average. This spike maps to the LinkedIn Product Launch Post going broadly shared.",
+      "LinkedIn drives 36% of social traffic vs. Facebook's 25%, despite often lower reach. LinkedIn clicks are high-intent and worth investing in.",
+      "Your social audience is the most internationally diverse: Brazil (12%), India (7%) signal organic global reach beyond paid markets.",
+    ]
+  },
+  q1launch: {
+    label: 'Q1 Launch',
+    total: 2272, links: 8, growth: '-77%', growthUp: false, topReferrer: 'Google', topCountry: 'United States',
+    timeSeries: [285,264,238,215,192,178,162,148,132,118,105,92,78,65],
+    referrers: [
+      {name:'Google',   value:795, color:'#00c4b3'},
+      {name:'Direct',   value:568, color:'#1e73f8'},
+      {name:'LinkedIn', value:455, color:'#8b5cf6'},
+      {name:'Email',    value:341, color:'#f97316'},
+      {name:'Other',    value:113, color:'#d1d5db'},
+    ],
+    topLinks: [
+      {types:['link'], title:'Launch Landing Page',          eng:682, pct:'30%'},
+      {types:['link'], title:'Press Release — TechCrunch',   eng:546, pct:'24%'},
+      {types:['link'], title:'Product Demo Video',           eng:410, pct:'18%'},
+      {types:['link'], title:'Partner Announcement',         eng:364, pct:'16%'},
+      {types:['link'], title:'Blog: Why We Built This',      eng:270, pct:'12%'},
+    ],
+    countries:[
+      {name:'United States', eng:1250, pct:'55%'},
+      {name:'Germany',       eng: 273, pct:'12%'},
+      {name:'Mexico',        eng: 227, pct:'10%'},
+      {name:'France',        eng: 182, pct: '8%'},
+      {name:'Canada',        eng: 136, pct: '6%'},
+      {name:'Other',         eng: 204, pct: '9%'},
+    ],
+    cities:[
+      {name:'San Francisco, US', eng:312, pct:'14%'},
+      {name:'New York, US',      eng:287, pct:'13%'},
+      {name:'Berlin, DE',        eng:145, pct: '6%'},
+      {name:'Mexico City, MX',   eng:142, pct: '6%'},
+      {name:'Paris, FR',         eng:118, pct: '5%'},
+    ],
+    aiIntro: "Analyzing Q1 Launch tag (8 links, 2,272 total engagements). Here's what the data tells you:",
+    aiInsights: [
+      "Classic launch decay curve: Day 1 peaked at 285 and declined 77% to 65 by Day 14. This is normal for PR-driven launches — the news cycle has moved on.",
+      "At 2,272 total, Q1 Launch has the highest raw engagement of any tag — but the trend line is what matters now. Consider a re-engagement push.",
+      "Google drives 35% of traffic, suggesting the launch generated earned SEO coverage. The Launch Landing Page (682 clicks) is still ranking — optimize it for long-tail queries.",
+    ]
+  }
+};
+
+// AI response library keyed by tag + keyword
+const AI_RESPONSES = {
+  all: {
+    default: "Across all 47 links, Google is your top referrer at 49% of traffic. United States drives 52% of engagements. The Jan 14 spike to 97 engagements is your top day — worth investigating which link drove it.",
+    channel: "Google dominates your referrers at 402 clicks (49%), followed by LinkedIn at 218 (27%). Facebook is third at 106. For better attribution, consider adding UTM parameters to your direct campaigns to reduce 'Unknown' traffic.",
+    location: "US leads at 52%, but Germany (21%) and Mexico (14%) are strong. Ireland appears despite not being a typical target market — this may indicate a specific campaign or PR mention there.",
+    compare: "To compare two tags, click 'Compare Tags' in the tag bar and select two tags. You'll see a side-by-side breakdown of performance, trends, and audience.",
+    improve: "Quick wins: (1) Investigate the Jan 14 spike to replicate it. (2) Your Germany audience (21%) is sizable — consider German-language content. (3) QR code scans are in the mix — are you tracking where they're placed?",
+  },
+  email: {
+    default: "Email Campaign is your most predictable tag. Steady 22% growth, 65% direct+email referrers, and strong US/Germany concentration. Your list is healthy and engaged.",
+    channel: "Direct (35%) + Email (30%) = 65% of your Email Campaign traffic. This is a strong signal that subscribers are clicking without friction. The 20% Google traffic suggests some recipients are Googling the linked content before clicking.",
+    location: "US (48%), Germany (18%), UK (12%) — a classic English-speaking + DACH distribution for B2B email. Canada and France are emerging. If you're not sending localized content to Germany, you're likely leaving engagement on the table.",
+    compare: "Try comparing Email Campaign vs. Social. Email has steadier growth; Social has bigger spikes. Email outperforms on direct/returning traffic; Social drives more international reach.",
+    improve: "Your Jan 13–14 sends hit 140 and 157 — your highest days. Check if those were Monday/Tuesday sends and lock in that cadence. Also, your Re-engagement Campaign (225 clicks) is underperforming relative to list size — A/B test the subject line.",
+    trend: "Steady upward trend — 85 on Jan 1 to 157 on Jan 14, a 85% increase. No single spike, which means growth is compounding from consistent sending, not one viral moment.",
+  },
+  social: {
+    default: "Social has your highest growth rate (+379% from Jan 1 to Jan 14) driven by the Jan 7 spike. LinkedIn is your top platform at 36% of social traffic. Your audience is the most internationally diverse of all tags.",
+    channel: "LinkedIn (36%) > Facebook (25%) > Twitter/X (20%) > Instagram (12%) > TikTok (7%). LinkedIn's dominance is notable — it typically has lower volume but higher intent. If you're running paid social, LinkedIn ROI appears strongest here.",
+    location: "US leads at 40%, but Brazil (12%) and India (7%) show strong organic international reach — platforms like LinkedIn and Instagram distribute globally without geo-targeting. Consider these markets for expansion.",
+    compare: "Compare Social vs. Email: Social has higher peaks (Jan 7: 188) but more volatility. Email is lower average but consistent. For predictable revenue, Email wins; for viral growth potential, Social is the lever.",
+    improve: "Jan 7 spike (188) = viral moment. Identify what made that LinkedIn post work and turn it into a repeatable template. Also: your TikTok link is lowest at 7% — either cut investment or test a different content format.",
+    trend: "Highly volatile: ranges from 38 (Jan 2) to 201 (Jan 14). The Jan 7 spike is a local peak driven by the LinkedIn post. The Jan 14 number (201) is your all-time high — you may be in a second wave.",
+  },
+  q1launch: {
+    default: "Q1 Launch has your highest total engagement (2,272) but a clear declining trend — down 77% from Day 1. The launch news cycle is fading. Google still drives 35% of traffic, suggesting earned SEO coverage remains.",
+    channel: "Google (35%) and Direct (25%) dominate, which is typical for a product launch — press coverage + people typing the URL directly. LinkedIn (20%) is strong, suggesting the launch hit professional audiences well.",
+    location: "US-heavy at 55%, with Germany (12%) and Mexico (10%) as strong secondary markets. San Francisco leads cities at 14%, consistent with a tech launch. France (8%) is higher than typical — check if there was French press coverage.",
+    compare: "Compare Q1 Launch vs. Email Campaign: Q1 Launch had 2272 total vs. 1485, but Email is growing (+22%) while Q1 Launch is declining (-77%). Email will overtake Q1 Launch within 2 weeks at current trajectories.",
+    improve: "The Blog post 'Why We Built This' (270 clicks) is holding steady relative to the landing page decline. Invest in long-form content now to capture the SEO tail of the launch. Also: refresh the landing page with new social proof to convert late-arriving traffic.",
+    trend: "Classic launch decay: 285 on Day 1, declining steadily to 65 on Day 14. This 77% decline is actually healthy for a PR-driven launch. The question is: what's the floor? Expect it to stabilize around 40–50/day from organic search.",
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────
+const state = {
+  tag: 'all',
+  compareMode: false,
+  compareTag: null,
+  locTab: 'countries'
+};
+
+let lineChart = null;
+let donutChart = null;
+let lineChart2 = null;
+let donutChart2 = null;
+
+// ─────────────────────────────────────────────────────────
+//  TAG SELECTION
+// ─────────────────────────────────────────────────────────
+function selectTag(tag) {
+  if (state.compareMode && state.compareTag === null && tag !== 'all') {
+    // Selecting the primary tag in compare mode
+    if (tag === state.tag) return;
+    state.compareTag = tag;
+    document.getElementById('comparePicker').classList.remove('visible');
+    document.getElementById('compareTagALabel').textContent = '';
+    render();
+    return;
+  }
+
+  if (state.compareMode && state.compareTag !== null) {
+    // Clicking a pill when compare is active: treat as switching compare tag
+    if (tag === 'all') { cancelCompare(); return; }
+    if (tag === state.tag) return;
+    state.compareTag = tag;
+    render();
+    return;
+  }
+
+  state.tag = tag;
+  state.compareMode = false;
+  state.compareTag = null;
+
+  document.querySelectorAll('.tag-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.tag === tag);
+    p.classList.remove('compare-active');
+  });
+  document.getElementById('compareBtn').classList.remove('active');
+  document.getElementById('comparePicker').classList.remove('visible');
+
+  const label = tag === 'all' ? 'all links and QR Codes' : `"${DATA[tag].label}" tag`;
+  document.getElementById('showingLabel').textContent = `Showing data for ${label}`;
+  updateAIContext(tag);
+  render();
+}
+
+// ─────────────────────────────────────────────────────────
+//  COMPARE MODE
+// ─────────────────────────────────────────────────────────
+function toggleCompareMode() {
+  if (state.compareMode) { cancelCompare(); return; }
+  if (state.tag === 'all') {
+    // need to select a tag first
+    state.tag = 'email';
+    document.querySelectorAll('.tag-pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.tag === 'email');
+    });
+  }
+  state.compareMode = true;
+  state.compareTag = null;
+
+  document.getElementById('compareBtn').classList.add('active');
+  const picker = document.getElementById('comparePicker');
+  picker.classList.add('visible');
+  document.getElementById('compareTagALabel').textContent = DATA[state.tag].label;
+
+  // Highlight primary tag
+  document.querySelectorAll('.tag-pill').forEach(p => {
+    if (p.dataset.tag === state.tag) p.classList.add('active');
+    else p.classList.remove('active', 'compare-active');
+  });
+  updateAIContext(state.tag);
+}
+
+function cancelCompare() {
+  state.compareMode = false;
+  state.compareTag = null;
+  document.getElementById('compareBtn').classList.remove('active');
+  document.getElementById('comparePicker').classList.remove('visible');
+  document.querySelectorAll('.tag-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.tag === state.tag);
+    p.classList.remove('compare-active');
+  });
+  render();
+}
+
+// ─────────────────────────────────────────────────────────
+//  RENDER ORCHESTRATOR
+// ─────────────────────────────────────────────────────────
+function render() {
+  const canvas = document.getElementById('canvas');
+  // Fade out
+  canvas.style.opacity = '0.3';
+  canvas.style.transition = 'opacity .15s';
+  setTimeout(() => {
+    if (state.compareMode && state.compareTag) {
+      renderComparison(canvas);
+    } else {
+      renderNormal(canvas);
+    }
+    canvas.style.opacity = '1';
+  }, 150);
+}
+
+// ─────────────────────────────────────────────────────────
+//  NORMAL VIEW
+// ─────────────────────────────────────────────────────────
+function renderNormal(canvas) {
+  const d = DATA[state.tag];
+  const color = state.tag === 'all' ? '#00c4b3' :
+                state.tag === 'email' ? '#00c4b3' :
+                state.tag === 'social' ? '#8b5cf6' : '#f97316';
+
+  canvas.innerHTML = `
+    <div class="stats-row">
+      ${statCard('Total Engagements', d.total.toLocaleString(), `${d.growth} vs prev period`, d.growthUp)}
+      ${statCard('Links Tracked', d.links, `active in date range`, true, false)}
+      ${statCard('Top Referrer', d.topReferrer, `leading source`, true, false)}
+      ${statCard('Top Country', d.topCountry, `largest audience`, true, false)}
+    </div>
+    <div class="cards-grid">
+      ${card('Total engagements over time', `<div style="height:185px"><canvas id="lineCanvas"></canvas></div>`)}
+      ${card('Total engagements by referrer', `
+        <div class="donut-layout">
+          <div class="donut-wrap"><canvas id="donutCanvas"></canvas>
+            <div class="donut-center">
+              <div class="donut-center-val">${d.total.toLocaleString()}</div>
+              <div class="donut-center-lbl">CLICKS<br>+ SCANS</div>
+            </div>
+          </div>
+          <div class="ref-list">${refList(d.referrers)}</div>
+        </div>`
+      )}
+      ${card('Top performing by total engagements', topLinksTable(d.topLinks))}
+      ${card('Total engagements by location', locationCard(d))}
+    </div>`;
+
+  initLineChart('lineCanvas', DATES, d.timeSeries, color);
+  initDonutChart('donutCanvas', d.referrers);
+}
+
+// ─────────────────────────────────────────────────────────
+//  COMPARISON VIEW
+// ─────────────────────────────────────────────────────────
+function renderComparison(canvas) {
+  const dA = DATA[state.tag];
+  const dB = DATA[state.compareTag];
+  const colorA = '#1e73f8';
+  const colorB = '#f97316';
+
+  // Update pill styling
+  document.querySelectorAll('.tag-pill').forEach(p => {
+    if (p.dataset.tag === state.tag) { p.classList.add('active'); p.classList.remove('compare-active'); }
+    else if (p.dataset.tag === state.compareTag) { p.classList.add('compare-active'); p.classList.remove('active'); }
+    else { p.classList.remove('active','compare-active'); }
+  });
+
+  const totalA = dA.total, totalB = dB.total;
+  const growthA = parseFloat(dA.growth), growthB = parseFloat(dB.growth);
+  const linksA = dA.links, linksB = dB.links;
+
+  canvas.innerHTML = `
+    <!-- SUMMARY CARD -->
+    <div class="compare-summary-card">
+      <div class="compare-summary-header">
+        <span class="compare-summary-title">Tag Comparison</span>
+        <span class="compare-tag-chip a"><span style="width:7px;height:7px;border-radius:50%;background:#1e73f8;display:inline-block;margin-right:4px"></span>${dA.label}</span>
+        <span class="vs-pill">vs</span>
+        <span class="compare-tag-chip b"><span style="width:7px;height:7px;border-radius:50%;background:#f97316;display:inline-block;margin-right:4px"></span>${dB.label}</span>
+      </div>
+      <div class="compare-metric-grid">
+        <div class="cmc col-header"><div class="cmc-tag" style="color:#1e73f8"><span class="dot" style="background:#1e73f8"></span>${dA.label}</div></div>
+        <div class="cmc col-header"><div class="cmc-tag" style="color:#f97316"><span class="dot" style="background:#f97316"></span>${dB.label}</div></div>
+
+        <div class="cmc">
+          <div class="cmc-label">Total Engagements</div>
+          <div class="cmc-value">${totalA.toLocaleString()}</div>
+          <div class="${totalA >= totalB ? 'cmc-win' : 'cmc-lose'}">${totalA >= totalB ? '▲ Higher' : '▼ Lower'} by ${Math.abs(totalA-totalB).toLocaleString()}</div>
+        </div>
+        <div class="cmc">
+          <div class="cmc-label">Total Engagements</div>
+          <div class="cmc-value">${totalB.toLocaleString()}</div>
+          <div class="${totalB >= totalA ? 'cmc-win' : 'cmc-lose'}">${totalB >= totalA ? '▲ Higher' : '▼ Lower'} by ${Math.abs(totalA-totalB).toLocaleString()}</div>
+        </div>
+
+        <div class="cmc">
+          <div class="cmc-label">Period Growth</div>
+          <div class="cmc-value">${dA.growth}</div>
+          <div class="${dA.growthUp ? 'cmc-win' : 'cmc-lose'}">${dA.growthUp ? '▲ Growing' : '▼ Declining'}</div>
+        </div>
+        <div class="cmc">
+          <div class="cmc-label">Period Growth</div>
+          <div class="cmc-value">${dB.growth}</div>
+          <div class="${dB.growthUp ? 'cmc-win' : 'cmc-lose'}">${dB.growthUp ? '▲ Growing' : '▼ Declining'}</div>
+        </div>
+
+        <div class="cmc">
+          <div class="cmc-label">Links Tracked</div>
+          <div class="cmc-value">${linksA}</div>
+          <div class="cmc-sub">~${Math.round(totalA/linksA)} avg/link</div>
+        </div>
+        <div class="cmc">
+          <div class="cmc-label">Links Tracked</div>
+          <div class="cmc-value">${linksB}</div>
+          <div class="cmc-sub">~${Math.round(totalB/linksB)} avg/link</div>
+        </div>
+
+        <div class="cmc">
+          <div class="cmc-label">Top Referrer</div>
+          <div class="cmc-value" style="font-size:15px">${dA.topReferrer}</div>
+        </div>
+        <div class="cmc">
+          <div class="cmc-label">Top Referrer</div>
+          <div class="cmc-value" style="font-size:15px">${dB.topReferrer}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TREND CHART (two lines) -->
+    ${card('Engagements over time — ' + dA.label + ' vs ' + dB.label,
+      `<div style="height:185px"><canvas id="compareLineCanvas"></canvas></div>`
+    )}
+
+    <!-- TWO COLS: referrers + top links + locations -->
+    <div class="compare-cols">
+      <div class="card">
+        <div class="compare-col-header">
+          <span class="compare-col-dot" style="background:${colorA}"></span>
+          <span>${dA.label} — Referrers</span>
+        </div>
+        <div class="card-body">
+          <div class="donut-layout">
+            <div class="donut-wrap" style="width:120px;height:120px"><canvas id="donutA"></canvas>
+              <div class="donut-center">
+                <div class="donut-center-val" style="font-size:15px">${totalA.toLocaleString()}</div>
+                <div class="donut-center-lbl" style="font-size:8px">TOTAL</div>
+              </div>
+            </div>
+            <div class="ref-list">${refList(dA.referrers)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="compare-col-header">
+          <span class="compare-col-dot" style="background:${colorB}"></span>
+          <span>${dB.label} — Referrers</span>
+        </div>
+        <div class="card-body">
+          <div class="donut-layout">
+            <div class="donut-wrap" style="width:120px;height:120px"><canvas id="donutB"></canvas>
+              <div class="donut-center">
+                <div class="donut-center-val" style="font-size:15px">${totalB.toLocaleString()}</div>
+                <div class="donut-center-lbl" style="font-size:8px">TOTAL</div>
+              </div>
+            </div>
+            <div class="ref-list">${refList(dB.referrers)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-cols">
+      <div class="card">
+        <div class="compare-col-header">
+          <span class="compare-col-dot" style="background:${colorA}"></span>
+          <span>${dA.label} — Top Links</span>
+        </div>
+        <div class="card-body">${topLinksTable(dA.topLinks)}</div>
+      </div>
+      <div class="card">
+        <div class="compare-col-header">
+          <span class="compare-col-dot" style="background:${colorB}"></span>
+          <span>${dB.label} — Top Links</span>
+        </div>
+        <div class="card-body">${topLinksTable(dB.topLinks)}</div>
+      </div>
+    </div>
+
+    <div class="compare-cols">
+      <div class="card">
+        <div class="compare-col-header">
+          <span class="compare-col-dot" style="background:${colorA}"></span>
+          <span>${dA.label} — Locations</span>
+        </div>
+        <div class="card-body">${simpleLocationTable(dA.countries)}</div>
+      </div>
+      <div class="card">
+        <div class="compare-col-header">
+          <span class="compare-col-dot" style="background:${colorB}"></span>
+          <span>${dB.label} — Locations</span>
+        </div>
+        <div class="card-body">${simpleLocationTable(dB.countries)}</div>
+      </div>
+    </div>`;
+
+  // Init dual line chart
+  setTimeout(() => {
+    initDualLineChart('compareLineCanvas', DATES, dA.timeSeries, dB.timeSeries, colorA, colorB, dA.label, dB.label);
+    initDonutChart('donutA', dA.referrers);
+    initDonutChart('donutB', dB.referrers);
+  }, 10);
+}
+
+// ─────────────────────────────────────────────────────────
+//  CHART HELPERS
+// ─────────────────────────────────────────────────────────
+function initLineChart(id, labels, data, color) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (lineChart) { lineChart.destroy(); lineChart = null; }
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data, borderColor: color, backgroundColor: color + '15',
+        borderWidth: 2, pointBackgroundColor: color, pointRadius: 3,
+        pointHoverRadius: 5, tension: 0.35, fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1e2337', titleColor: '#e5e7eb', bodyColor: '#9ca3af',
+        padding: 10, cornerRadius: 8,
+        callbacks: { title: (i) => i[0].label, label: (i) => ` ${i.raw} engagements` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 0, maxTicksLimit: 7 } },
+        y: { grid: { color: '#f3f4f6' }, ticks: { color: '#9ca3af', font: { size: 10 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function initDualLineChart(id, labels, dataA, dataB, colorA, colorB, labelA, labelB) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: labelA, data: dataA, borderColor: colorA, backgroundColor: colorA + '10',
+          borderWidth: 2.5, pointBackgroundColor: colorA, pointRadius: 3, pointHoverRadius: 5, tension: 0.35, fill: false },
+        { label: labelB, data: dataB, borderColor: colorB, backgroundColor: colorB + '10',
+          borderWidth: 2.5, pointBackgroundColor: colorB, pointRadius: 3, pointHoverRadius: 5, tension: 0.35, fill: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end',
+          labels: { font: { size: 11 }, padding: 12, boxWidth: 12, color: '#374151' }},
+        tooltip: {
+          backgroundColor: '#1e2337', titleColor: '#e5e7eb', bodyColor: '#9ca3af',
+          padding: 10, cornerRadius: 8, mode: 'index', intersect: false
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 0, maxTicksLimit: 7 } },
+        y: { grid: { color: '#f3f4f6' }, ticks: { color: '#9ca3af', font: { size: 10 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function initDonutChart(id, referrers) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (id === 'donutCanvas' && donutChart) { donutChart.destroy(); donutChart = null; }
+  const chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: referrers.map(r => r.name),
+      datasets: [{ data: referrers.map(r => r.value), backgroundColor: referrers.map(r => r.color),
+        borderWidth: 2, borderColor: 'white', hoverBorderColor: 'white' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e2337', titleColor: '#e5e7eb', bodyColor: '#9ca3af',
+          padding: 10, cornerRadius: 8,
+          callbacks: {
+            label: (i) => {
+              const total = i.dataset.data.reduce((a,b)=>a+b,0);
+              return ` ${i.label}: ${i.raw} (${Math.round(i.raw/total*100)}%)`
+            }
+          }
+        }
+      }
+    }
+  });
+  if (id === 'donutCanvas') donutChart = chart;
+}
+
+// ─────────────────────────────────────────────────────────
+//  HTML HELPERS
+// ─────────────────────────────────────────────────────────
+function card(title, bodyHTML) {
+  return `<div class="card">
+    <div class="card-header">
+      <span class="drag-handle">⠿</span>
+      <span class="card-title">${title}</span>
+      <button class="card-action">↓</button>
+      <button class="card-action">⋯</button>
+    </div>
+    <div class="card-body">${bodyHTML}</div>
+  </div>`;
+}
+
+function statCard(label, value, sub, growthUp, showDelta = true) {
+  return `<div class="stat-card">
+    <div class="stat-label">${label}</div>
+    <div class="stat-value">${value}</div>
+    ${showDelta
+      ? `<div class="stat-delta ${!growthUp ? 'down' : ''}">${growthUp ? '▲' : '▼'} ${sub}</div>`
+      : `<div class="stat-sub">${sub}</div>`
+    }
+  </div>`;
+}
+
+function refList(referrers) {
+  return referrers.map(r => `
+    <div class="ref-item">
+      <span class="ref-dot" style="background:${r.color}"></span>
+      <span class="ref-name">${r.name}</span>
+      <span class="ref-val">${r.value.toLocaleString()}</span>
+    </div>`).join('');
+}
+
+function topLinksTable(links) {
+  const rows = links.map(l => {
+    const icons = l.types.map(t => t === 'link'
+      ? `<span class="ico">🔗</span>`
+      : `<span class="ico">▦</span>`).join('');
+    return `<tr>
+      <td><span class="icon-badge">${icons}</span></td>
+      <td class="lnk">${l.title}</td>
+      <td class="num">${l.eng.toLocaleString()}</td>
+      <td class="pct">${l.pct}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="dtable">
+    <thead><tr>
+      <th style="width:36px">Type</th>
+      <th>Title</th>
+      <th class="r">Engagements</th>
+      <th class="r">%</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function locationCard(d) {
+  return `<div>
+    <div class="tab-bar">
+      <span class="tab active" onclick="switchLocTab(this,'countries')">Countries</span>
+      <span class="tab" onclick="switchLocTab(this,'cities')">Cities</span>
+    </div>
+    <div id="locTableBody">${locationRows(d.countries)}</div>
+  </div>`;
+}
+
+function locationRows(rows) {
+  return `<table class="dtable">
+    <thead><tr><th>#</th><th>Location</th><th class="r">Engagements</th><th class="r">%</th></tr></thead>
+    <tbody>${rows.map((r,i) => `<tr>
+      <td style="color:#9ca3af;font-size:12px">${i+1}</td>
+      <td>${r.name}</td>
+      <td class="num">${r.eng.toLocaleString()}</td>
+      <td class="pct">${r.pct}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function simpleLocationTable(rows) {
+  return `<table class="dtable">
+    <thead><tr><th>#</th><th>Country</th><th class="r">Engagements</th><th class="r">%</th></tr></thead>
+    <tbody>${rows.map((r,i) => `<tr>
+      <td style="color:#9ca3af;font-size:12px">${i+1}</td>
+      <td>${r.name}</td>
+      <td class="num">${r.eng.toLocaleString()}</td>
+      <td class="pct">${r.pct}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function switchLocTab(el, tab) {
+  document.querySelectorAll('.tab-bar .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const d = DATA[state.tag];
+  document.getElementById('locTableBody').innerHTML = locationRows(tab === 'cities' ? d.cities : d.countries);
+}
+
+// ─────────────────────────────────────────────────────────
+//  AI ASSIST
+// ─────────────────────────────────────────────────────────
+let aiOpen = false;
+
+function toggleAI() {
+  aiOpen = !aiOpen;
+  document.getElementById('aiPanel').classList.toggle('open', aiOpen);
+  document.getElementById('aiFab').classList.toggle('shifted', aiOpen);
+  if (aiOpen && document.getElementById('aiMsgs').children.length === 0) {
+    showInitialAIMessage();
+  }
+}
+
+function updateAIContext(tag) {
+  const label = DATA[tag]?.label || 'All Links';
+  document.getElementById('aiContextChip').textContent = label;
+  updateAISuggestions(tag);
+}
+
+function updateAISuggestions(tag) {
+  const chips = {
+    all: ['Why did engagement spike on Jan 14?', "What's my top channel?", 'How do I compare tags?'],
+    email: ['Why is Email Campaign growing?', "What's my best send day?", 'How do I improve open rates?'],
+    social: ['What caused the Jan 7 spike?', 'Which platform should I invest in?', 'Is my audience growing?'],
+    q1launch: ['Why is Q1 Launch declining?', 'How do I re-engage launch traffic?', 'What should I do next?'],
+  };
+  const s = document.getElementById('aiSuggestions');
+  s.innerHTML = (chips[tag] || chips.all).map(c =>
+    `<button class="ai-chip" onclick="askAI('${c}')">${c}</button>`
+  ).join('');
+}
+
+function showInitialAIMessage() {
+  const tag = state.tag;
+  const d = DATA[tag];
+  addAIMessage('assistant', d.aiIntro + ' ' + d.aiInsights[0]);
+  updateAISuggestions(tag);
+}
+
+function addAIMessage(role, text) {
+  const msgs = document.getElementById('aiMsgs');
+  const div = document.createElement('div');
+  div.className = `ai-msg ${role}`;
+  div.innerHTML = `
+    <div class="msg-sender">${role === 'user' ? 'You' : '✦ Bitly AI'}</div>
+    <div class="msg-bubble">${text}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('aiMsgs');
+  const div = document.createElement('div');
+  div.className = 'ai-msg assistant';
+  div.id = 'typingIndicator';
+  div.innerHTML = `<div class="msg-sender">✦ Bitly AI</div>
+    <div class="typing-bubble">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function getAIResponse(question, tag) {
+  const q = question.toLowerCase();
+  const responses = AI_RESPONSES[tag] || AI_RESPONSES.all;
+
+  if (q.includes('spike') || q.includes('peak') || q.includes('jan 7') || q.includes('jan 14') || q.includes('trend') || q.includes('declin') || q.includes('grow')) {
+    return responses.trend || responses.default;
+  }
+  if (q.includes('channel') || q.includes('platform') || q.includes('referrer') || q.includes('linkedin') || q.includes('google') || q.includes('email') || q.includes('social') || q.includes('invest')) {
+    return responses.channel || responses.default;
+  }
+  if (q.includes('country') || q.includes('location') || q.includes('audience') || q.includes('where') || q.includes('us ') || q.includes('international')) {
+    return responses.location || responses.default;
+  }
+  if (q.includes('compare') || q.includes('vs') || q.includes('versus') || q.includes('difference')) {
+    return responses.compare || responses.default;
+  }
+  if (q.includes('improve') || q.includes('next') || q.includes('recommend') || q.includes('should') || q.includes('action') || q.includes('increase') || q.includes('fix') || q.includes('re-engage')) {
+    return responses.improve || responses.default;
+  }
+  return responses.default;
+}
+
+function askAI(question) {
+  addAIMessage('user', question);
+  addTyping();
+  const tag = state.compareTag ? state.compareTag : state.tag;
+  setTimeout(() => {
+    removeTyping();
+    addAIMessage('assistant', getAIResponse(question, tag));
+  }, 900 + Math.random() * 500);
+}
+
+function sendAI() {
+  const input = document.getElementById('aiInput');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  askAI(q);
+}
+
+// ─────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────
+render();
+updateAIContext('all');
+</script>
+</body>
+</html>

@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitly · Self-Benchmarking</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f5f7; color: #1a1a2e; }
+
+    /* Sidebar */
+    .sidebar { background: #1a1a2e; width: 56px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px; position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; }
+    .sidebar-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #8892a4; transition: all .15s; }
+    .sidebar-icon:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .sidebar-icon.active { background: rgba(26,107,255,.2); color: #1a6bff; }
+    .sidebar-divider { width: 32px; height: 1px; background: rgba(255,255,255,.08); margin: 4px 0; }
+
+    /* Top bar */
+    .topbar { height: 56px; background: #fff; border-bottom: 1px solid #e8eaed; display: flex; align-items: center; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 50; margin-left: 56px; }
+    .search-box { flex: 1; max-width: 360px; height: 36px; border: 1px solid #e0e2e7; border-radius: 8px; display: flex; align-items: center; padding: 0 12px; gap: 8px; background: #f8f9fb; font-size: 13px; color: #6b7280; }
+
+    /* Cards */
+    .card { background: #fff; border-radius: 12px; border: 1px solid #e8eaed; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f1f3; display: flex; align-items: center; justify-content: space-between; }
+    .card-body { padding: 20px; }
+
+    /* KPI */
+    .kpi-big { font-size: 32px; font-weight: 700; color: #1a1a2e; letter-spacing: -1px; }
+    .kpi-label { font-size: 12px; font-weight: 500; color: #8892a4; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+
+    /* Delta */
+    .delta-up { color: #16a34a; background: #dcfce7; padding: 2px 7px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .delta-down { color: #dc2626; background: #fee2e2; padding: 2px 7px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .delta-flat { color: #6b7280; background: #f3f4f6; padding: 2px 7px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+    /* Nav tabs (top of content) */
+    .nav-tabs { display: flex; gap: 0; border-bottom: 2px solid #e8eaed; }
+    .nav-tab { padding: 10px 18px; font-size: 14px; font-weight: 500; color: #8892a4; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color .15s; }
+    .nav-tab:hover { color: #1a1a2e; }
+    .nav-tab.active { color: #1a6bff; border-bottom-color: #1a6bff; }
+
+    /* Segment buttons */
+    .seg-group { display: flex; border: 1px solid #e0e2e7; border-radius: 8px; overflow: hidden; }
+    .seg-btn { padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; background: #fff; color: #6b7280; border: none; transition: all .15s; }
+    .seg-btn:hover { background: #f8f9fb; }
+    .seg-btn.active { background: #1a6bff; color: #fff; }
+
+    /* Toggle */
+    .toggle-track { width: 36px; height: 20px; border-radius: 10px; position: relative; cursor: pointer; transition: background .2s; }
+    .toggle-thumb { position: absolute; top: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+
+    /* SVG Line Chart */
+    .chart-wrap { position: relative; }
+
+    /* Mover rows */
+    .mover-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f1f3; cursor: pointer; gap: 10px; }
+    .mover-row:last-child { border-bottom: none; }
+    .mover-row:hover { background: #f8f9fb; margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 8px; }
+
+    /* AI insight accordion */
+    .insight-card { border: 1px solid #e8eaed; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+    .insight-header { display: flex; align-items: center; padding: 14px 18px; cursor: pointer; gap: 12px; background: #fff; }
+    .insight-header:hover { background: #f8f9fb; }
+    .insight-body { padding: 16px 18px; background: #fafbfc; border-top: 1px solid #f0f1f3; font-size: 13px; color: #4b5563; line-height: 1.6; }
+
+    /* Donut */
+    .donut-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Chip */
+    .chip { display: inline-flex; align-items: center; gap: 5px; background: #eff4ff; color: #1a6bff; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 500; border: 1px solid #c7d9ff; }
+
+    /* AI drawer */
+    .drawer { position: fixed; right: 0; top: 0; height: 100%; width: 400px; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,.12); z-index: 200; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .25s ease; }
+    .drawer.open { transform: translateX(0); }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.2); z-index: 199; }
+
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; color: #8892a4; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #f0f1f3; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid #f0f1f3; color: #374151; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #f8f9fb; }
+    .data-table tr { cursor: pointer; }
+
+    /* Explain btn */
+    .explain-btn { font-size: 11px; padding: 3px 8px; border-radius: 20px; border: 1px solid #c7d9ff; color: #1a6bff; background: #eff4ff; cursor: pointer; white-space: nowrap; font-weight: 500; }
+    .explain-btn:hover { background: #dbeafe; }
+
+    /* QR preview */
+    .qr-mock { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; width: 80px; height: 80px; }
+    .qr-cell { border-radius: 1px; }
+
+    scrollbar-width: thin;
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useReducer, useRef, useEffect, useMemo } = React;
+
+// ── MOCK DATA ──────────────────────────────────────────────────────────────
+const TODAY = '2026-02-20';
+
+function genSeries(base, vol, trend, days = 60) {
+  const result = [];
+  let v = base;
+  const end = new Date(TODAY);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(end);
+    d.setDate(d.getDate() - i);
+    v = Math.max(5, Math.round(v + trend + (Math.random() - 0.48) * vol));
+    result.push({ date: d.toISOString().slice(0,10), totalEngagements: v });
+  }
+  return result;
+}
+
+const ASSETS = [
+  { id:'a1',  type:'link', title:'Spring Campaign Landing',  identifier:'bit.ly/spring26',      dailySeries: genSeries(420,  90,  5) },
+  { id:'a2',  type:'qr',   title:'Store Entrance QR',        identifier:'qr-store-entrance',     dailySeries: genSeries(310,  55, -3) },
+  { id:'a3',  type:'link', title:'Product Launch CTA',       identifier:'bit.ly/launch',         dailySeries: genSeries(580, 130,  9) },
+  { id:'a4',  type:'qr',   title:'Packaging QR — SKU 4421',  identifier:'qr-sku-4421',           dailySeries: genSeries(200,  38,  1) },
+  { id:'a5',  type:'link', title:'Email Footer Link',        identifier:'bit.ly/email-footer',   dailySeries: genSeries(750,  50, -7) },
+  { id:'a6',  type:'qr',   title:'Event Check-in QR',        identifier:'qr-event-checkin',      dailySeries: genSeries(90,   75, 14) },
+  { id:'a7',  type:'link', title:'Social Bio Link',          identifier:'bit.ly/bio',            dailySeries: genSeries(1100,160,  4) },
+  { id:'a8',  type:'qr',   title:'Receipt QR — Promo',       identifier:'qr-receipt-promo',      dailySeries: genSeries(160,  50, -5) },
+  { id:'a9',  type:'link', title:'Partner Referral Link',    identifier:'bit.ly/partner-ref',    dailySeries: genSeries(340,  72,  6) },
+  { id:'a10', type:'qr',   title:'Loyalty Card QR',          identifier:'qr-loyalty-card',       dailySeries: genSeries(270,  44,  2) },
+  { id:'a11', type:'link', title:'Retargeting Ad UTM',       identifier:'bit.ly/retarget',       dailySeries: genSeries(480, 105, -9) },
+  { id:'a12', type:'qr',   title:'Window Cling QR',          identifier:'qr-window-cling',       dailySeries: genSeries(55,   28, 11) },
+];
+
+const REFERRERS = ['Direct', 'Instagram', 'Twitter/X', 'Email', 'Facebook', 'LinkedIn'];
+const CITIES    = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia'];
+const DEVICES   = ['Mobile', 'Desktop', 'Tablet'];
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+function dateRange(preset) {
+  const end = new Date(TODAY);
+  const fmt  = d => d.toISOString().slice(0,10);
+  if (preset === 7  || preset === 14 || preset === 30) {
+    const s = new Date(end); s.setDate(s.getDate() - preset + 1);
+    return { start: fmt(s), end: fmt(end) };
+  }
+  // thisWeek Mon–today
+  const dow = end.getDay();
+  const mon = new Date(end); mon.setDate(end.getDate() - ((dow + 6) % 7));
+  return { start: fmt(mon), end: fmt(end) };
+}
+
+function prevRange(start, end) {
+  const s = new Date(start), e = new Date(end);
+  const days = Math.round((e - s) / 86400000) + 1;
+  const pe = new Date(s); pe.setDate(pe.getDate() - 1);
+  const ps = new Date(pe); ps.setDate(pe.getDate() - days + 1);
+  const fmt = d => d.toISOString().slice(0,10);
+  return { start: fmt(ps), end: fmt(pe) };
+}
+
+function sumEng(series, start, end) {
+  return series.filter(p => p.date >= start && p.date <= end).reduce((a, p) => a + p.totalEngagements, 0);
+}
+function orgTotal(start, end) {
+  return ASSETS.reduce((a, asset) => a + sumEng(asset.dailySeries, start, end), 0);
+}
+function assetDeltas(cs, ce, ps, pe) {
+  return ASSETS.map(asset => {
+    const cur  = sumEng(asset.dailySeries, cs, ce);
+    const prev = sumEng(asset.dailySeries, ps, pe);
+    const delta = prev === 0 ? 0 : ((cur - prev) / prev) * 100;
+    return { asset, cur, prev, delta };
+  }).sort((a,b) => b.delta - a.delta);
+}
+
+function fmtN(n) { return n >= 1000 ? (n/1000).toFixed(1)+'k' : String(n); }
+function fmtP(n) { return (n>=0?'+':'')+n.toFixed(1)+'%'; }
+function deltaEl(n, noColor=false) {
+  if (noColor) return <span style={{color:'#8892a4',fontSize:13}}>{fmtP(n)}</span>;
+  const cls = n>0?'delta-up':n<0?'delta-down':'delta-flat';
+  const arrow = n>0?'↑':n<0?'↓':'→';
+  return <span className={cls}>{arrow} {fmtP(n)}</span>;
+}
+
+function rangeLabel(preset) {
+  if (preset===7)  return 'Last 7 Days';
+  if (preset===14) return 'Last 14 Days';
+  if (preset===30) return 'Last 30 Days';
+  return 'This Week';
+}
+function prevLabel(preset) {
+  if (preset===7)  return 'Prev 7 Days';
+  if (preset===14) return 'Prev 14 Days';
+  if (preset===30) return 'Prev 30 Days';
+  return 'Last Week';
+}
+
+// Mock distributions (deterministic-ish from asset id)
+function mockReferrers(assetId) {
+  const seed = assetId.charCodeAt(1) || 1;
+  const base = [38, 22, 17, 12, 7, 4].map((v,i) => ({ label: REFERRERS[i], pct: v + (seed*i*3)%11 - 5 }));
+  const total = base.reduce((a,b)=>a+b.pct,0);
+  return base.map(b => ({ ...b, pct: Math.max(1, Math.round(b.pct/total*100)) }));
+}
+function mockCities(assetId) {
+  const seed = assetId.charCodeAt(1) || 1;
+  return CITIES.map((c,i) => ({ city: c, engagements: Math.round(800 - i*110 + (seed*i*7)%80) }));
+}
+function mockDevices() {
+  return [{ label:'Mobile', pct:62, color:'#1a6bff' }, { label:'Desktop', pct:30, color:'#8892a4' }, { label:'Tablet', pct:8, color:'#e8eaed' }];
+}
+
+// ── AI RESPONSE ────────────────────────────────────────────────────────────
+function aiResponse(chip) {
+  const { entity, currentValue, comparisonValue, deltaPct, currentRangeLabel, comparisonRangeLabel } = chip;
+  const dir = deltaPct >= 0 ? 'increase' : 'decline';
+  const isOrg = entity.type === 'org';
+
+  const { start: cs, end: ce } = dateRange(7);
+  const { start: ps, end: pe } = prevRange(cs, ce);
+  const deltas = assetDeltas(cs, ce, ps, pe);
+  const topUp  = deltas.slice(0,2);
+  const topDn  = deltas.slice(-2).reverse();
+
+  let summary, contributors, steps;
+
+  if (isOrg) {
+    summary = `Total Engagements appear to be ${deltaPct>=0?'trending upward':'softening'} — ${currentRangeLabel} recorded ${fmtN(currentValue)} engagements (${fmtP(deltaPct)} vs ${comparisonRangeLabel}).`;
+    contributors = [
+      `**${topUp[0].asset.title}** may be driving upward momentum (${fmtP(topUp[0].delta)} vs prior period).`,
+      deltaPct < 0
+        ? `**${topDn[0].asset.title}** likely contributes to the decline (${fmtP(topDn[0].delta)}).`
+        : `**${topUp[1].asset.title}** also appears to contribute positively (${fmtP(topUp[1].delta)}).`,
+    ];
+    steps = [
+      `Review ${topUp[0].asset.title} to understand what's driving engagement — replicate if intentional.`,
+      deltaPct<0 ? 'Audit declining assets for broken links or expired campaigns.' : 'Scale top-performing assets while momentum is elevated.',
+    ];
+  } else {
+    const asset = ASSETS.find(a=>a.id===entity.assetId);
+    const { start: cs2, end: ce2 } = dateRange(7);
+    const slice = (asset?.dailySeries||[]).filter(p=>p.date>=cs2&&p.date<=ce2);
+    let maxDay = { date:'', swing:0 };
+    for (let i=1;i<slice.length;i++) {
+      const sw = Math.abs(slice[i].totalEngagements-slice[i-1].totalEngagements);
+      if (sw>maxDay.swing) maxDay={date:slice[i].date,swing:sw};
+    }
+    summary = `**${asset?.title||'This asset'}** shows a ${Math.abs(deltaPct).toFixed(1)}% ${dir} in ${currentRangeLabel} (${fmtN(currentValue)} vs ${fmtN(comparisonValue)} in ${comparisonRangeLabel}).`;
+    contributors = [
+      maxDay.date ? `The largest single-day movement appears around **${maxDay.date}** (±${fmtN(maxDay.swing)} engagements).` : 'Daily patterns may show concentrated traffic spikes.',
+      deltaPct>0 ? 'Increased distribution or referral traffic likely contributing to growth.' : 'Reduced visibility or audience fatigue may be contributing factors.',
+    ];
+    steps = [
+      'Cross-reference with campaign activity or distribution changes on high-swing days.',
+      deltaPct<0 ? 'Consider refreshing destination or redistributing via a different channel.' : 'Amplify distribution while engagement is elevated.',
+    ];
+  }
+  return { summary, contributors, steps };
+}
+
+// ── SVG LINE CHART ─────────────────────────────────────────────────────────
+function LineChart({ series, compSeries, W=600, H=160, showComp=true }) {
+  if (!series || series.length < 2) return null;
+  const pad = { top:12, right:16, bottom:28, left:40 };
+  const w = W - pad.left - pad.right;
+  const h = H - pad.top - pad.bottom;
+
+  const allVals = [...series.map(p=>p.totalEngagements), ...(showComp&&compSeries?compSeries.map(p=>p.totalEngagements):[])];
+  const maxV = Math.max(...allVals);
+  const minV = Math.min(...allVals);
+  const range = maxV - minV || 1;
+
+  const px = (i, len) => pad.left + (i / (len-1)) * w;
+  const py = v => pad.top + h - ((v-minV)/range)*h;
+
+  function polyline(data) {
+    return data.map((p,i)=>`${px(i,data.length)},${py(p.totalEngagements)}`).join(' ');
+  }
+  function area(data) {
+    const pts = data.map((p,i)=>`${px(i,data.length)},${py(p.totalEngagements)}`);
+    return `M${px(0,data.length)},${pad.top+h} L${pts.join(' L')} L${px(data.length-1,data.length)},${pad.top+h} Z`;
+  }
+
+  // Y labels
+  const yTicks = [minV, Math.round((minV+maxV)/2), maxV];
+  // X labels (first, mid, last)
+  const xLabels = [0, Math.floor((series.length-1)/2), series.length-1];
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:'visible'}}>
+      <defs>
+        <linearGradient id="gradCur" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1a6bff" stopOpacity="0.15"/>
+          <stop offset="100%" stopColor="#1a6bff" stopOpacity="0"/>
+        </linearGradient>
+        <linearGradient id="gradPrev" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8892a4" stopOpacity="0.1"/>
+          <stop offset="100%" stopColor="#8892a4" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+
+      {/* Grid lines */}
+      {yTicks.map((v,i)=>(
+        <g key={i}>
+          <line x1={pad.left} x2={W-pad.right} y1={py(v)} y2={py(v)} stroke="#f0f1f3" strokeWidth="1"/>
+          <text x={pad.left-6} y={py(v)+4} textAnchor="end" fontSize="10" fill="#8892a4">{fmtN(v)}</text>
+        </g>
+      ))}
+
+      {/* Comparison area+line */}
+      {showComp && compSeries && (
+        <>
+          <path d={area(compSeries)} fill="url(#gradPrev)" />
+          <polyline points={polyline(compSeries)} fill="none" stroke="#8892a4" strokeWidth="1.5" strokeDasharray="4 3"/>
+        </>
+      )}
+
+      {/* Current area+line */}
+      <path d={area(series)} fill="url(#gradCur)" />
+      <polyline points={polyline(series)} fill="none" stroke="#1a6bff" strokeWidth="2"/>
+
+      {/* End dot */}
+      <circle cx={px(series.length-1,series.length)} cy={py(series[series.length-1].totalEngagements)} r="4" fill="#1a6bff"/>
+
+      {/* X labels */}
+      {xLabels.map(i=>(
+        <text key={i} x={px(i,series.length)} y={H-6} textAnchor="middle" fontSize="10" fill="#8892a4">
+          {series[i].date.slice(5)}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ── DONUT CHART ─────────────────────────────────────────────────────────────
+function Donut({ data, size=100 }) {
+  const r = 34; const cx = 50; const cy = 50;
+  const circ = 2*Math.PI*r;
+  let offset = 0;
+  const slices = data.map(d => {
+    const dash = (d.pct/100)*circ;
+    const slice = { ...d, dash, offset };
+    offset += dash;
+    return slice;
+  });
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f0f1f3" strokeWidth="18"/>
+      {slices.map((s,i)=>(
+        <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+          stroke={s.color} strokeWidth="18"
+          strokeDasharray={`${s.dash} ${circ-s.dash}`}
+          strokeDashoffset={-s.offset}
+          style={{transform:'rotate(-90deg)',transformOrigin:'50% 50%'}}
+        />
+      ))}
+    </svg>
+  );
+}
+
+// ── GLOBAL STATE ────────────────────────────────────────────────────────────
+const init = {
+  tab: 'insights',
+  preset: 7,
+  benchOn: true,
+  assetId: 'a1',
+  chatOpen: false,
+  messages: [],
+  chips: [],
+};
+
+function reducer(s, a) {
+  switch (a.type) {
+    case 'TAB':       return { ...s, tab: a.v };
+    case 'PRESET':    return { ...s, preset: a.v };
+    case 'BENCH':     return { ...s, benchOn: !s.benchOn };
+    case 'ASSET':     return { ...s, assetId: a.v };
+    case 'OPEN_CHAT': return { ...s, chatOpen: true };
+    case 'CLOSE_CHAT':return { ...s, chatOpen: false };
+    case 'PUSH_CHIP': return { ...s, chatOpen: true, chips: [...s.chips, a.chip] };
+    case 'DROP_CHIP': return { ...s, chips: s.chips.filter((_,i)=>i!==a.i) };
+    case 'SEND':      return { ...s, messages:[...s.messages,a.msg], chips:[] };
+    default: return s;
+  }
+}
+
+// ── SIDEBAR ICONS ────────────────────────────────────────────────────────────
+const IcoGrid = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>;
+const IcoBar  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="10" width="4" height="11"/><rect x="10" y="5" width="4" height="16"/><rect x="17" y="8" width="4" height="13"/></svg>;
+const IcoLink = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>;
+const IcoStar = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+const IcoCog  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>;
+const IcoAI   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2zm0 10l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/></svg>;
+const IcoSend = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
+const IcoChev = ({open}) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{transform:open?'rotate(180deg)':'',transition:'transform .2s'}}><polyline points="6 9 12 15 18 9"/></svg>;
+const IcoClose= () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IcoSearch=()=> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+
+// ── EXPLAIN BUTTON ──────────────────────────────────────────────────────────
+function ExplainBtn({ onClick }) {
+  return <button className="explain-btn" onClick={e=>{e.stopPropagation();onClick();}}>✦ Explain</button>;
+}
+
+// ── INSIGHTS TAB ─────────────────────────────────────────────────────────────
+function InsightsTab({ dispatch }) {
+  const { start: cs, end: ce } = dateRange('thisWeek');
+  const { start: ps, end: pe } = prevRange(cs, ce);
+  const cur  = orgTotal(cs, ce);
+  const prev = orgTotal(ps, pe);
+  const orgD = prev===0?0:((cur-prev)/prev)*100;
+
+  const deltas = assetDeltas(cs, ce, ps, pe);
+  const gainers  = deltas.slice(0,3);
+  const decliners= deltas.slice(-3).reverse();
+
+  const pushChip = (entity, c, p, d) => dispatch({ type:'PUSH_CHIP', chip:{
+    surface:'insights', entity, metric:'Total Engagements',
+    currentRangeLabel:'This Week', comparisonRangeLabel:'Last Week',
+    currentValue:c, comparisonValue:p, deltaPct:d,
+  }});
+
+  const [openCards, setOpenCards] = useState({ org:true, gainers:false, decliners:false });
+  const tog = k => setOpenCards(s=>({...s,[k]:!s[k]}));
+
+  // Current week series (org)
+  const orgSeries = ASSETS[0].dailySeries.filter(p=>p.date>=cs&&p.date<=ce).map((p,i)=>({
+    date: p.date,
+    totalEngagements: ASSETS.reduce((a,asset)=>{
+      const match = asset.dailySeries.find(x=>x.date===p.date);
+      return a+(match?match.totalEngagements:0);
+    }, 0)
+  }));
+  const orgPrevSeries = ASSETS[0].dailySeries.filter(p=>p.date>=ps&&p.date<=pe).map((p,i)=>({
+    date: p.date,
+    totalEngagements: ASSETS.reduce((a,asset)=>{
+      const match = asset.dailySeries.find(x=>x.date===p.date);
+      return a+(match?match.totalEngagements:0);
+    }, 0)
+  }));
+
+  return (
+    <div>
+      {/* Page header */}
+      <div style={{marginBottom:24}}>
+        <h1 style={{fontSize:22,fontWeight:700,color:'#1a1a2e'}}>Weekly Insights</h1>
+        <p style={{fontSize:13,color:'#8892a4',marginTop:4}}>This Week vs Last Week · {cs} – {ce}</p>
+      </div>
+
+      {/* Org KPI accordion */}
+      <div className="insight-card">
+        <div className="insight-header" onClick={()=>tog('org')}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:600,color:'#8892a4',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Total Engagements · This Week</div>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <span style={{fontSize:28,fontWeight:700,color:'#1a1a2e',letterSpacing:-1}}>{fmtN(cur)}</span>
+              {deltaEl(orgD)}
+              <span style={{fontSize:12,color:'#8892a4'}}>vs {fmtN(prev)} last week</span>
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <ExplainBtn onClick={()=>pushChip({type:'org'},cur,prev,orgD)}/>
+            <IcoChev open={openCards.org}/>
+          </div>
+        </div>
+        {openCards.org && (
+          <div className="insight-body">
+            <div style={{marginBottom:12,fontSize:13,color:'#374151'}}>
+              Org total engagements this week compared to last week. The chart shows daily trends for both periods.
+            </div>
+            <div style={{height:160}}>
+              <LineChart series={orgSeries} compSeries={orgPrevSeries} W={560} H={160} showComp={true}/>
+            </div>
+            <div style={{display:'flex',gap:16,marginTop:10,fontSize:12,color:'#8892a4'}}>
+              <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:20,height:2,background:'#1a6bff',display:'inline-block',borderRadius:1}}/> This Week</span>
+              <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:20,height:2,background:'#8892a4',display:'inline-block',borderRadius:1,borderTop:'2px dashed #8892a4',height:0,borderBottom:'none'}}/> Last Week</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Gainers accordion */}
+      <div className="insight-card">
+        <div className="insight-header" onClick={()=>tog('gainers')}>
+          <div style={{flex:1,display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontSize:18}}>📈</span>
+            <span style={{fontWeight:600,color:'#1a1a2e',fontSize:14}}>Top Gainers this week</span>
+            <span style={{fontSize:12,color:'#8892a4'}}>vs last week</span>
+          </div>
+          <IcoChev open={openCards.gainers}/>
+        </div>
+        {openCards.gainers && (
+          <div style={{padding:'0 4px 8px'}}>
+            <table className="data-table">
+              <thead>
+                <tr><th>#</th><th>Asset</th><th style={{textAlign:'right'}}>This Week</th><th style={{textAlign:'right'}}>WoW</th><th></th></tr>
+              </thead>
+              <tbody>
+                {gainers.map((d,i)=>(
+                  <tr key={d.asset.id} onClick={()=>pushChip({type:'asset',assetId:d.asset.id},d.cur,d.prev,d.delta)}>
+                    <td style={{color:'#8892a4',fontWeight:700}}>#{i+1}</td>
+                    <td>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:16}}>{d.asset.type==='link'?'🔗':'⬛'}</span>
+                        <div>
+                          <div style={{fontWeight:600,fontSize:13}}>{d.asset.title}</div>
+                          <div style={{fontSize:11,color:'#8892a4'}}>{d.asset.identifier}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{textAlign:'right',fontWeight:600}}>{fmtN(d.cur)}</td>
+                    <td style={{textAlign:'right'}}>{deltaEl(d.delta)}</td>
+                    <td><ExplainBtn onClick={()=>pushChip({type:'asset',assetId:d.asset.id},d.cur,d.prev,d.delta)}/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Decliners accordion */}
+      <div className="insight-card">
+        <div className="insight-header" onClick={()=>tog('decliners')}>
+          <div style={{flex:1,display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontSize:18}}>📉</span>
+            <span style={{fontWeight:600,color:'#1a1a2e',fontSize:14}}>Top Decliners this week</span>
+            <span style={{fontSize:12,color:'#8892a4'}}>vs last week</span>
+          </div>
+          <IcoChev open={openCards.decliners}/>
+        </div>
+        {openCards.decliners && (
+          <div style={{padding:'0 4px 8px'}}>
+            <table className="data-table">
+              <thead>
+                <tr><th>#</th><th>Asset</th><th style={{textAlign:'right'}}>This Week</th><th style={{textAlign:'right'}}>WoW</th><th></th></tr>
+              </thead>
+              <tbody>
+                {decliners.map((d,i)=>(
+                  <tr key={d.asset.id} onClick={()=>pushChip({type:'asset',assetId:d.asset.id},d.cur,d.prev,d.delta)}>
+                    <td style={{color:'#8892a4',fontWeight:700}}>#{i+1}</td>
+                    <td>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:16}}>{d.asset.type==='link'?'🔗':'⬛'}</span>
+                        <div>
+                          <div style={{fontWeight:600,fontSize:13}}>{d.asset.title}</div>
+                          <div style={{fontSize:11,color:'#8892a4'}}>{d.asset.identifier}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{textAlign:'right',fontWeight:600}}>{fmtN(d.cur)}</td>
+                    <td style={{textAlign:'right'}}>{deltaEl(d.delta)}</td>
+                    <td><ExplainBtn onClick={()=>pushChip({type:'asset',assetId:d.asset.id},d.cur,d.prev,d.delta)}/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
+function DashboardTab({ state, dispatch }) {
+  const { preset, benchOn } = state;
+  const { start:cs, end:ce } = dateRange(preset);
+  const { start:ps, end:pe } = prevRange(cs, ce);
+
+  const cur  = orgTotal(cs, ce);
+  const prev = orgTotal(ps, pe);
+  const orgD = prev===0?0:((cur-prev)/prev)*100;
+
+  const allDeltas = assetDeltas(cs, ce, ps, pe);
+  const top5up = allDeltas.slice(0,5);
+  const top5dn = allDeltas.slice(-5).reverse();
+
+  // Build daily series for org
+  const dates = ASSETS[0].dailySeries.filter(p=>p.date>=cs&&p.date<=ce).map(p=>p.date);
+  const curSeries  = dates.map(date=>({ date, totalEngagements: ASSETS.reduce((a,asset)=>{const m=asset.dailySeries.find(x=>x.date===date);return a+(m?m.totalEngagements:0)},0) }));
+  const prevDates  = ASSETS[0].dailySeries.filter(p=>p.date>=ps&&p.date<=pe).map(p=>p.date);
+  const prevSeries = prevDates.map(date=>({ date, totalEngagements: ASSETS.reduce((a,asset)=>{const m=asset.dailySeries.find(x=>x.date===date);return a+(m?m.totalEngagements:0)},0) }));
+
+  const devices = mockDevices();
+
+  const pushChip = (entity, c, p, d) => dispatch({ type:'PUSH_CHIP', chip:{
+    surface:'dashboard', entity, metric:'Total Engagements',
+    currentRangeLabel:rangeLabel(preset), comparisonRangeLabel:prevLabel(preset),
+    currentValue:c, comparisonValue:p, deltaPct:d,
+  }});
+  const goAsset = id => { dispatch({type:'ASSET',v:id}); dispatch({type:'TAB',v:'asset'}); };
+
+  return (
+    <div>
+      {/* Page header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+        <div>
+          <h1 style={{fontSize:22,fontWeight:700,color:'#1a1a2e'}}>Dashboard</h1>
+          <p style={{fontSize:13,color:'#8892a4',marginTop:4}}>{cs} – {ce}</p>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div className="seg-group">
+            {[7,14,30].map(p=>(
+              <button key={p} className={`seg-btn${preset===p?' active':''}`} onClick={()=>dispatch({type:'PRESET',v:p})}>
+                {p===7?'Last 7 Days':p===14?'Last 14 Days':'Last 30 Days'}
+              </button>
+            ))}
+          </div>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#374151',cursor:'pointer'}}>
+            <div className="toggle-track" style={{background:benchOn?'#1a6bff':'#d1d5db'}} onClick={()=>dispatch({type:'BENCH'})}>
+              <div className="toggle-thumb" style={{transform:benchOn?'translateX(16px)':'translateX(2px)'}}/>
+            </div>
+            Benchmark
+          </label>
+        </div>
+      </div>
+
+      {/* Top KPI strip */}
+      <div className="card" style={{padding:'20px 24px',marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+          <div>
+            <div className="kpi-label">Total Engagements · {rangeLabel(preset)}</div>
+            <div style={{display:'flex',alignItems:'baseline',gap:12}}>
+              <span className="kpi-big">{fmtN(cur)}</span>
+              {benchOn && deltaEl(orgD)}
+              {benchOn && <span style={{fontSize:13,color:'#8892a4'}}>vs {fmtN(prev)} {prevLabel(preset)}</span>}
+            </div>
+          </div>
+          <ExplainBtn onClick={()=>pushChip({type:'org'},cur,prev,orgD)}/>
+        </div>
+      </div>
+
+      {/* Main chart */}
+      <div className="card" style={{padding:'20px 24px',marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+          <span style={{fontWeight:600,fontSize:14,color:'#1a1a2e'}}>Total Engagements over time</span>
+          {benchOn && (
+            <div style={{display:'flex',gap:16,fontSize:12,color:'#8892a4'}}>
+              <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:16,height:2,background:'#1a6bff',display:'inline-block',borderRadius:1}}/> {rangeLabel(preset)}</span>
+              <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:16,height:2,background:'#8892a4',display:'inline-block',borderRadius:1}}/> {prevLabel(preset)}</span>
+            </div>
+          )}
+        </div>
+        <LineChart series={curSeries} compSeries={prevSeries} W={640} H={180} showComp={benchOn}/>
+      </div>
+
+      {/* Bottom grid: movers + devices */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+        {/* Top Movers table */}
+        <div className="card" style={{overflow:'hidden'}}>
+          <div className="card-header">
+            <span style={{fontWeight:600,fontSize:14,color:'#1a1a2e'}}>Top Asset Movers</span>
+            <span style={{fontSize:12,color:'#8892a4'}}>{rangeLabel(preset)}</span>
+          </div>
+          {/* Gainers */}
+          <div style={{padding:'12px 16px 0'}}>
+            <div style={{fontSize:11,fontWeight:600,color:'#16a34a',textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>▲ Gainers</div>
+            {top5up.slice(0,3).map((d,i)=>(
+              <div key={d.asset.id} className="mover-row" onClick={()=>goAsset(d.asset.id)}>
+                <span style={{fontSize:11,color:'#8892a4',fontWeight:700,width:18}}>#{i+1}</span>
+                <span style={{fontSize:15}}>{d.asset.type==='link'?'🔗':'⬛'}</span>
+                <span style={{flex:1,fontSize:13,fontWeight:500,color:'#1a1a2e',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.asset.title}</span>
+                <span style={{fontSize:13,fontWeight:600,color:'#374151',marginRight:8}}>{fmtN(d.cur)}</span>
+                {benchOn?deltaEl(d.delta):<span style={{color:'#8892a4',fontSize:13}}>{fmtN(d.cur)}</span>}
+                <ExplainBtn onClick={()=>pushChip({type:'asset',assetId:d.asset.id},d.cur,d.prev,d.delta)}/>
+              </div>
+            ))}
+            <div style={{fontSize:11,fontWeight:600,color:'#dc2626',textTransform:'uppercase',letterSpacing:.5,margin:'12px 0 6px'}}>▼ Decliners</div>
+            {top5dn.slice(0,3).map((d,i)=>(
+              <div key={d.asset.id} className="mover-row" onClick={()=>goAsset(d.asset.id)}>
+                <span style={{fontSize:11,color:'#8892a4',fontWeight:700,width:18}}>#{i+1}</span>
+                <span style={{fontSize:15}}>{d.asset.type==='link'?'🔗':'⬛'}</span>
+                <span style={{flex:1,fontSize:13,fontWeight:500,color:'#1a1a2e',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.asset.title}</span>
+                <span style={{fontSize:13,fontWeight:600,color:'#374151',marginRight:8}}>{fmtN(d.cur)}</span>
+                {benchOn?deltaEl(d.delta):<span style={{color:'#8892a4',fontSize:13}}>{fmtN(d.cur)}</span>}
+                <ExplainBtn onClick={()=>pushChip({type:'asset',assetId:d.asset.id},d.cur,d.prev,d.delta)}/>
+              </div>
+            ))}
+          </div>
+          <div style={{height:12}}/>
+        </div>
+
+        {/* Devices donut */}
+        <div className="card">
+          <div className="card-header">
+            <span style={{fontWeight:600,fontSize:14,color:'#1a1a2e'}}>Devices</span>
+          </div>
+          <div className="card-body" style={{display:'flex',alignItems:'center',gap:24}}>
+            <Donut data={devices} size={120}/>
+            <div style={{flex:1}}>
+              {devices.map(d=>(
+                <div key={d.label} style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{width:10,height:10,borderRadius:'50%',background:d.color}}/>
+                    <span style={{fontSize:13,color:'#374151'}}>{d.label}</span>
+                  </div>
+                  <span style={{fontSize:13,fontWeight:600,color:'#1a1a2e'}}>{d.pct}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Referrers mini table */}
+          <div style={{borderTop:'1px solid #f0f1f3',padding:'0 20px 16px'}}>
+            <div style={{fontSize:12,fontWeight:600,color:'#8892a4',textTransform:'uppercase',letterSpacing:.5,padding:'12px 0 8px'}}>Top Referrers</div>
+            {mockReferrers('a1').slice(0,4).map(r=>(
+              <div key={r.label} style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                <span style={{fontSize:13,color:'#374151'}}>{r.label}</span>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{width:80,height:4,borderRadius:2,background:'#f0f1f3',overflow:'hidden'}}>
+                    <div style={{width:`${r.pct}%`,height:'100%',background:'#1a6bff',borderRadius:2}}/>
+                  </div>
+                  <span style={{fontSize:12,color:'#8892a4',width:28,textAlign:'right'}}>{r.pct}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ASSET DETAIL TAB ──────────────────────────────────────────────────────────
+function AssetDetailTab({ state, dispatch }) {
+  const { assetId, preset, benchOn } = state;
+  const asset = ASSETS.find(a=>a.id===assetId)||ASSETS[0];
+
+  const { start:cs, end:ce } = dateRange(preset);
+  const { start:ps, end:pe } = prevRange(cs, ce);
+
+  const cur  = sumEng(asset.dailySeries, cs, ce);
+  const prev = sumEng(asset.dailySeries, ps, pe);
+  const d    = prev===0?0:((cur-prev)/prev)*100;
+
+  const { start:ws, end:we } = dateRange('thisWeek');
+  const { start:ls, end:le } = prevRange(ws, we);
+  const wowCur  = sumEng(asset.dailySeries, ws, we);
+  const wowPrev = sumEng(asset.dailySeries, ls, le);
+  const wowD    = wowPrev===0?0:((wowCur-wowPrev)/wowPrev)*100;
+
+  const curSeries  = asset.dailySeries.filter(p=>p.date>=cs&&p.date<=ce);
+  const prevSeries = asset.dailySeries.filter(p=>p.date>=ps&&p.date<=pe);
+  const referrers  = mockReferrers(assetId);
+  const cities     = mockCities(assetId);
+  const devices    = mockDevices();
+
+  const pushChip = () => dispatch({ type:'PUSH_CHIP', chip:{
+    surface:'asset', entity:{type:'asset',assetId:asset.id}, metric:'Total Engagements',
+    currentRangeLabel:rangeLabel(preset), comparisonRangeLabel:prevLabel(preset),
+    currentValue:cur, comparisonValue:prev, deltaPct:d,
+  }});
+
+  // QR mock pattern (deterministic)
+  const qrPat = useMemo(()=>{
+    const cells=[];
+    for(let r=0;r<7;r++) for(let c=0;c<7;c++) {
+      const corner=(r<2&&c<2)||(r<2&&c>4)||(r>4&&c<2);
+      const bit=corner||((r*7+c+assetId.charCodeAt(1))%3!==0);
+      cells.push(bit);
+    }
+    return cells;
+  },[assetId]);
+
+  return (
+    <div>
+      {/* Header row */}
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+        <div>
+          <h1 style={{fontSize:22,fontWeight:700,color:'#1a1a2e'}}>Link/QR Detail</h1>
+          <p style={{fontSize:13,color:'#8892a4',marginTop:4}}>{rangeLabel(preset)} · {cs} – {ce}</p>
+        </div>
+        <select
+          value={assetId}
+          onChange={e=>dispatch({type:'ASSET',v:e.target.value})}
+          style={{padding:'8px 32px 8px 12px',border:'1px solid #e0e2e7',borderRadius:8,fontSize:13,color:'#1a1a2e',background:'#fff',cursor:'pointer',outline:'none',appearance:'none',backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238892a4' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,backgroundRepeat:'no-repeat',backgroundPosition:'right 10px center'}}
+        >
+          {ASSETS.map(a=><option key={a.id} value={a.id}>{a.type==='link'?'🔗':'⬛'} {a.title}</option>)}
+        </select>
+      </div>
+
+      {/* Asset meta card */}
+      <div className="card" style={{padding:'16px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:16}}>
+        {asset.type==='qr' ? (
+          <div style={{background:'#f8f9fb',padding:8,borderRadius:8,border:'1px solid #e8eaed'}}>
+            <div className="qr-mock">
+              {qrPat.map((on,i)=>(
+                <div key={i} className="qr-cell" style={{background:on?'#1a1a2e':'transparent'}}/>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{width:56,height:56,background:'#eff4ff',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>🔗</div>
+        )}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,fontSize:16,color:'#1a1a2e'}}>{asset.title}</div>
+          <div style={{fontSize:13,color:'#1a6bff',marginTop:2}}>{asset.identifier}</div>
+        </div>
+        <span style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:20,background:asset.type==='link'?'#eff4ff':'#f3e8ff',color:asset.type==='link'?'#1a6bff':'#7c3aed',textTransform:'uppercase',letterSpacing:.5}}>
+          {asset.type}
+        </span>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:20}}>
+        <div className="card" style={{padding:'16px 20px'}}>
+          <div className="kpi-label">Total Engagements</div>
+          <div style={{fontSize:28,fontWeight:700,color:'#1a1a2e',letterSpacing:-1}}>{fmtN(cur)}</div>
+          {benchOn&&<div style={{marginTop:6,display:'flex',alignItems:'center',gap:8}}>{deltaEl(d)}<span style={{fontSize:12,color:'#8892a4'}}>vs {fmtN(prev)}</span></div>}
+          <div style={{marginTop:8}}><ExplainBtn onClick={pushChip}/></div>
+        </div>
+        <div className="card" style={{padding:'16px 20px'}}>
+          <div className="kpi-label">WoW · This Week</div>
+          <div style={{fontSize:28,fontWeight:700,color:'#1a1a2e',letterSpacing:-1}}>{fmtN(wowCur)}</div>
+          <div style={{marginTop:6,display:'flex',alignItems:'center',gap:8}}>{deltaEl(wowD)}<span style={{fontSize:12,color:'#8892a4'}}>vs {fmtN(wowPrev)}</span></div>
+        </div>
+        <div className="card" style={{padding:'16px 20px'}}>
+          <div className="kpi-label">Daily Average</div>
+          <div style={{fontSize:28,fontWeight:700,color:'#1a1a2e',letterSpacing:-1}}>{fmtN(Math.round(cur/Math.max(curSeries.length,1)))}</div>
+          <div style={{marginTop:6,fontSize:12,color:'#8892a4'}}>per day · {rangeLabel(preset)}</div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="card" style={{padding:'20px 24px',marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+          <span style={{fontWeight:600,fontSize:14,color:'#1a1a2e'}}>Engagement Trend</span>
+          {benchOn&&<div style={{display:'flex',gap:16,fontSize:12,color:'#8892a4'}}>
+            <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:16,height:2,background:'#1a6bff',display:'inline-block',borderRadius:1}}/> {rangeLabel(preset)}</span>
+            <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:16,height:2,background:'#8892a4',display:'inline-block',borderRadius:1}}/> {prevLabel(preset)}</span>
+          </div>}
+        </div>
+        <LineChart series={curSeries} compSeries={prevSeries} W={640} H={160} showComp={benchOn}/>
+      </div>
+
+      {/* Bottom grid */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        {/* Referrers */}
+        <div className="card">
+          <div className="card-header"><span style={{fontWeight:600,fontSize:14}}>Referrers</span></div>
+          <div className="card-body">
+            {referrers.map(r=>(
+              <div key={r.label} style={{display:'flex',alignItems:'center',marginBottom:10,gap:10}}>
+                <span style={{fontSize:13,color:'#374151',width:90}}>{r.label}</span>
+                <div style={{flex:1,height:6,borderRadius:3,background:'#f0f1f3',overflow:'hidden'}}>
+                  <div style={{width:`${r.pct}%`,height:'100%',background:'#1a6bff',borderRadius:3}}/>
+                </div>
+                <span style={{fontSize:12,color:'#8892a4',width:32,textAlign:'right'}}>{r.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Locations */}
+        <div className="card">
+          <div className="card-header"><span style={{fontWeight:600,fontSize:14}}>Top Locations</span></div>
+          <div style={{padding:'0 4px'}}>
+            <table className="data-table">
+              <thead>
+                <tr><th>City</th><th style={{textAlign:'right'}}>Engagements</th></tr>
+              </thead>
+              <tbody>
+                {cities.map(c=>(
+                  <tr key={c.city} style={{cursor:'default'}}>
+                    <td>{c.city}</td>
+                    <td style={{textAlign:'right',fontWeight:600}}>{fmtN(c.engagements)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AI CHAT DRAWER ────────────────────────────────────────────────────────────
+function ChatDrawer({ state, dispatch }) {
+  const { chatOpen, messages, chips } = state;
+  const [input, setInput] = useState('');
+  const endRef = useRef(null);
+
+  useEffect(()=>{ if(endRef.current) endRef.current.scrollIntoView({behavior:'smooth'}); },[messages]);
+
+  function handleSend() {
+    const text = input.trim();
+    if (!text && chips.length===0) return;
+    const userMsg = { role:'user', text, chips:[...chips], id:Date.now() };
+    dispatch({ type:'SEND', msg:userMsg });
+    setInput('');
+
+    setTimeout(()=>{
+      let aiMsg;
+      if (chips.length>0) {
+        const resp = aiResponse(chips[0]);
+        aiMsg = { role:'ai', id:Date.now()+1, summary:resp.summary, contributors:resp.contributors, steps:resp.steps };
+      } else {
+        aiMsg = { role:'ai', id:Date.now()+1, clarify:true };
+      }
+      dispatch({ type:'SEND', msg:aiMsg });
+    }, 700);
+  }
+
+  function buildQuickChip(preset) {
+    const { start:cs, end:ce } = dateRange(preset);
+    const { start:ps, end:pe } = prevRange(cs, ce);
+    const c=orgTotal(cs,ce), p=orgTotal(ps,pe);
+    return { surface:'dashboard', entity:{type:'org'}, metric:'Total Engagements',
+      currentRangeLabel:rangeLabel(preset), comparisonRangeLabel:prevLabel(preset),
+      currentValue:c, comparisonValue:p, deltaPct:p===0?0:((c-p)/p)*100 };
+  }
+
+  function renderMd(str) {
+    return str.split('\n').map((line,i)=>{
+      const parts = line.split(/\*\*(.+?)\*\*/g);
+      return <span key={i}>{parts.map((p,j)=>j%2===1?<strong key={j}>{p}</strong>:p)}{i<str.split('\n').length-1&&<br/>}</span>;
+    });
+  }
+
+  return (
+    <>
+      {chatOpen && <div className="overlay" onClick={()=>dispatch({type:'CLOSE_CHAT'})}/>}
+      <div className={`drawer ${chatOpen?'open':''}`}>
+        {/* Header */}
+        <div style={{padding:'16px 20px',borderBottom:'1px solid #e8eaed',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div style={{width:32,height:32,background:'linear-gradient(135deg,#1a6bff,#6366f1)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:14}}>✦</div>
+            <div>
+              <div style={{fontWeight:700,fontSize:14,color:'#1a1a2e'}}>AI Assistant</div>
+              <div style={{fontSize:11,color:'#8892a4'}}>Powered by mock data</div>
+            </div>
+          </div>
+          <button onClick={()=>dispatch({type:'CLOSE_CHAT'})} style={{background:'none',border:'none',cursor:'pointer',color:'#8892a4',padding:4,display:'flex'}}><IcoClose/></button>
+        </div>
+
+        {/* Messages */}
+        <div style={{flex:1,overflowY:'auto',padding:'20px 16px',display:'flex',flexDirection:'column',gap:16}}>
+          {messages.length===0 && (
+            <div style={{textAlign:'center',color:'#8892a4',marginTop:40}}>
+              <div style={{fontSize:32,marginBottom:8}}>✦</div>
+              <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>Ask about your data</div>
+              <div style={{fontSize:12}}>Or click "✦ Explain" on any metric</div>
+            </div>
+          )}
+
+          {messages.map(msg=>(
+            <div key={msg.id}>
+              {msg.role==='user' && (
+                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+                  {msg.chips?.length>0 && (
+                    <div style={{display:'flex',flexWrap:'wrap',gap:4,justifyContent:'flex-end'}}>
+                      {msg.chips.map((c,i)=>(
+                        <span key={i} className="chip">
+                          {c.entity.type==='org'?'🏢':'📎'} {c.entity.type==='org'?'Org':ASSETS.find(a=>a.id===c.entity.assetId)?.title||'Asset'} · {c.currentRangeLabel}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {msg.text && (
+                    <div style={{background:'#1a6bff',color:'white',padding:'10px 14px',borderRadius:'16px 16px 4px 16px',fontSize:13,maxWidth:'85%'}}>
+                      {msg.text}
+                    </div>
+                  )}
+                  {!msg.text && msg.chips?.length>0 && (
+                    <div style={{background:'#1a6bff',color:'white',padding:'10px 14px',borderRadius:'16px 16px 4px 16px',fontSize:13,opacity:.8,fontStyle:'italic'}}>
+                      Explain this metric
+                    </div>
+                  )}
+                </div>
+              )}
+              {msg.role==='ai' && (
+                <div style={{display:'flex',gap:8}}>
+                  <div style={{width:28,height:28,background:'linear-gradient(135deg,#1a6bff,#6366f1)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:12,flexShrink:0,marginTop:2}}>✦</div>
+                  <div style={{flex:1}}>
+                    {msg.clarify ? (
+                      <div style={{background:'#f8f9fb',borderRadius:'4px 16px 16px 16px',padding:'12px 14px',fontSize:13,color:'#374151'}}>
+                        <p style={{marginBottom:10}}>I'd love to help! Which context would you like to explore?</p>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                          {['This Week','Last 14 Days','Last 30 Days'].map((label,i)=>{
+                            const p=[7,14,30][i]==='This Week'?'thisWeek':[7,14,30][i];
+                            return <button key={label} onClick={()=>dispatch({type:'PUSH_CHIP',chip:buildQuickChip([7,14,30][i])})} style={{padding:'5px 12px',background:'#fff',border:'1px solid #c7d9ff',borderRadius:20,fontSize:12,color:'#1a6bff',cursor:'pointer',fontWeight:500}}>{label}</button>;
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{background:'#f8f9fb',borderRadius:'4px 16px 16px 16px',padding:'12px 14px',fontSize:13,color:'#374151',lineHeight:1.6}}>
+                        <p style={{marginBottom:10}}>{renderMd(msg.summary)}</p>
+                        <div style={{fontSize:12,fontWeight:600,color:'#8892a4',textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>Likely Contributors</div>
+                        <ul style={{listStyle:'none',marginBottom:10}}>
+                          {msg.contributors.map((c,i)=><li key={i} style={{marginBottom:4,paddingLeft:12,position:'relative'}}><span style={{position:'absolute',left:0,color:'#1a6bff'}}>•</span>{renderMd(c)}</li>)}
+                        </ul>
+                        <div style={{fontSize:12,fontWeight:600,color:'#8892a4',textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>Next Steps</div>
+                        <ul style={{listStyle:'none'}}>
+                          {msg.steps.map((s,i)=><li key={i} style={{marginBottom:4,paddingLeft:12,position:'relative'}}><span style={{position:'absolute',left:0,color:'#1a6bff'}}>→</span>{s}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          <div ref={endRef}/>
+        </div>
+
+        {/* Pending chips */}
+        {chips.length>0 && (
+          <div style={{padding:'8px 16px',borderTop:'1px solid #f0f1f3',display:'flex',flexWrap:'wrap',gap:6}}>
+            {chips.map((c,i)=>(
+              <span key={i} className="chip">
+                {c.entity.type==='org'?'🏢':'📎'} {c.entity.type==='org'?'Org':ASSETS.find(a=>a.id===c.entity.assetId)?.title||'Asset'} · {c.currentRangeLabel}
+                <button onClick={()=>dispatch({type:'DROP_CHIP',i})} style={{background:'none',border:'none',cursor:'pointer',color:'#1a6bff',padding:'0 0 0 2px',lineHeight:1,fontSize:14}}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Input */}
+        <div style={{padding:'12px 16px',borderTop:'1px solid #e8eaed',flexShrink:0}}>
+          <div style={{display:'flex',gap:8}}>
+            <input
+              value={input}
+              onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&handleSend()}
+              placeholder={chips.length>0?'Add context or press Enter…':'Ask about your data…'}
+              style={{flex:1,padding:'10px 14px',border:'1px solid #e0e2e7',borderRadius:10,fontSize:13,outline:'none',background:'#f8f9fb',color:'#1a1a2e'}}
+            />
+            <button onClick={handleSend} style={{width:40,height:40,background:'#1a6bff',border:'none',borderRadius:10,color:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <IcoSend/>
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [state, dispatch] = useReducer(reducer, init);
+  const { tab } = state;
+
+  const NAV = [
+    { id:'insights',  icon:<IcoStar/>,  label:'Insights' },
+    { id:'dashboard', icon:<IcoBar/>,   label:'Dashboard' },
+    { id:'asset',     icon:<IcoLink/>,  label:'Links & QR' },
+  ];
+
+  return (
+    <div style={{display:'flex',minHeight:'100vh'}}>
+      {/* Sidebar */}
+      <div className="sidebar">
+        {/* Logo */}
+        <div style={{width:36,height:36,background:'#fa5800',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/></svg>
+        </div>
+        <div className="sidebar-divider"/>
+
+        {NAV.map(n=>(
+          <div key={n.id} className={`sidebar-icon ${tab===n.id?'active':''}`} onClick={()=>dispatch({type:'TAB',v:n.id})} title={n.label}>
+            {n.icon}
+          </div>
+        ))}
+
+        <div style={{flex:1}}/>
+        <div className="sidebar-divider"/>
+        <div className="sidebar-icon" title="Settings"><IcoCog/></div>
+      </div>
+
+      {/* Main */}
+      <div style={{flex:1,marginLeft:56,display:'flex',flexDirection:'column',minHeight:'100vh'}}>
+        {/* Topbar */}
+        <div className="topbar">
+          <div style={{fontWeight:600,fontSize:14,color:'#1a1a2e',minWidth:120}}>
+            {tab==='insights'?'Insights':tab==='dashboard'?'Dashboard':'Links & QR'}
+          </div>
+          <div className="search-box">
+            <IcoSearch/>
+            <span>Search links, QR codes…</span>
+          </div>
+          <div style={{flex:1}}/>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={{width:32,height:32,borderRadius:'50%',background:'linear-gradient(135deg,#1a6bff,#6366f1)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:12,fontWeight:700,cursor:'pointer'}} title="Open AI Assistant" onClick={()=>dispatch({type:'OPEN_CHAT'})}>
+              ✦
+            </div>
+            <div style={{width:32,height:32,borderRadius:'50%',background:'#e8eaed',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,cursor:'pointer'}}>👤</div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{flex:1,padding:'28px 32px',maxWidth:1100,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
+          {tab==='insights'  && <InsightsTab  dispatch={dispatch}/>}
+          {tab==='dashboard' && <DashboardTab state={state} dispatch={dispatch}/>}
+          {tab==='asset'     && <AssetDetailTab state={state} dispatch={dispatch}/>}
+        </div>
+      </div>
+
+      {/* Floating AI button */}
+      <button
+        onClick={()=>dispatch({type:'OPEN_CHAT'})}
+        style={{position:'fixed',bottom:24,right:24,width:52,height:52,borderRadius:'50%',background:'linear-gradient(135deg,#1a6bff,#6366f1)',border:'none',color:'white',fontSize:20,cursor:'pointer',boxShadow:'0 4px 16px rgba(26,107,255,.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:150,transition:'transform .15s'}}
+        onMouseEnter={e=>e.target.style.transform='scale(1.08)'}
+        onMouseLeave={e=>e.target.style.transform='scale(1)'}
+      >✦</button>
+
+      <ChatDrawer state={state} dispatch={dispatch}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

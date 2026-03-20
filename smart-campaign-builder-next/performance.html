@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Performance — Smart Campaign Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10">
+  <div class="max-w-5xl mx-auto flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-bold text-slate-900 leading-tight">Smart Campaign Builder</p>
+        <p class="text-xs text-slate-400">Prompt → smart links → clicks</p>
+      </div>
+    </a>
+    <a id="back-link" href="campaign.html?id=1" class="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">← Campaign</a>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-6 py-10">
+  <div id="loading" class="text-center py-16 text-slate-400 text-sm">Loading performance data…</div>
+  <div id="content" class="hidden space-y-6">
+
+    <div>
+      <p class="text-xs text-slate-400 font-semibold uppercase tracking-wide">Performance</p>
+      <h1 id="campaign-title" class="text-2xl font-bold text-slate-900 mt-0.5"></h1>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-1">Total Clicks</p>
+        <p id="stat-total" class="text-3xl font-bold text-indigo-600">—</p>
+        <p class="text-xs text-slate-400 mt-0.5">selected channels</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-1">Avg Daily</p>
+        <p class="text-3xl font-bold text-slate-800"><span id="stat-avg">—</span></p>
+        <p class="text-xs text-slate-400 mt-0.5">clicks per active day</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-1">Active Days</p>
+        <p class="text-3xl font-bold text-slate-800"><span id="stat-days">—</span></p>
+        <p class="text-xs text-slate-400 mt-0.5">days with clicks</p>
+      </div>
+    </div>
+
+    <div class="flex gap-5 items-start">
+      <div class="w-52 shrink-0">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Channels</h2>
+            <div class="flex gap-2 text-xs">
+              <button onclick="selectAll()" class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">All</button>
+              <span class="text-slate-200">|</span>
+              <button onclick="clearAll()" class="text-slate-400 hover:text-slate-600 font-medium transition-colors">None</button>
+            </div>
+          </div>
+          <div id="channel-sidebar" class="p-2 space-y-0.5"></div>
+        </div>
+      </div>
+
+      <div class="flex-1 min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-5 flex-wrap min-h-6">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">Comparing</span>
+          <div id="comparing-row" class="flex flex-wrap gap-1.5"></div>
+        </div>
+        <div class="relative" id="chart-container">
+          <div id="chart-wrap"></div>
+          <div id="chart-tooltip"
+            class="hidden absolute bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 z-10"
+            style="pointer-events:none;min-width:148px;max-width:220px"></div>
+        </div>
+        <div id="chart-legend" class="flex flex-wrap gap-4 mt-4 pt-4 border-t border-slate-100"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+function genDays(startIso, total, days) {
+  const result = [];
+  let remaining = total;
+  for (let i = 0; i < days; i++) {
+    const d = new Date(startIso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + i);
+    const wd = d.getUTCDay();
+    const factor = (wd === 0 || wd === 6) ? 0.65 : 1.1;
+    const noise = 0.75 + 0.5 * ((Math.sin(i * 1.9) + 1) / 2);
+    const clicks = i === days - 1 ? Math.max(0, remaining) : Math.min(remaining, Math.round((total / days) * factor * noise));
+    remaining -= clicks;
+    result.push({ date: d.toISOString().slice(0, 10), clicks });
+  }
+  return result;
+}
+
+const PERF_DATA = {
+  1: { name: "Summer Sale 2026",   total_clicks: 8420,  avg_daily: 255,
+       channels: [
+         { id:1, name:"Email",    total_clicks:3200, clicks_by_day: genDays("2026-02-15", 3200, 33) },
+         { id:2, name:"Meta",     total_clicks:2800, clicks_by_day: genDays("2026-02-15", 2800, 33) },
+         { id:3, name:"Google",   total_clicks:2420, clicks_by_day: genDays("2026-02-15", 2420, 33) },
+       ]},
+  2: { name: "Q1 Product Launch",  total_clicks: 12835, avg_daily: 186,
+       channels: [
+         { id:4, name:"Email",    total_clicks:4200, clicks_by_day: genDays("2026-01-10", 4200, 69) },
+         { id:5, name:"Meta",     total_clicks:3100, clicks_by_day: genDays("2026-01-10", 3100, 69) },
+         { id:6, name:"Google",   total_clicks:2900, clicks_by_day: genDays("2026-01-10", 2900, 69) },
+         { id:7, name:"Partners", total_clicks:2635, clicks_by_day: genDays("2026-01-10", 2635, 69) },
+       ]},
+  3: { name: "Holiday Retargeting", total_clicks: 4210, avg_daily: 105,
+       channels: [
+         { id:8, name:"Email",    total_clicks:2100, clicks_by_day: genDays("2025-11-20", 2100, 40) },
+         { id:9, name:"YouTube",  total_clicks:2110, clicks_by_day: genDays("2025-11-20", 2110, 40) },
+       ]},
+};
+
+const params = new URLSearchParams(location.search);
+const campaignId = parseInt(params.get('id') || '1', 10);
+
+const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316'];
+let perfData = null;
+let selectedIds = new Set();
+
+const W = 680, H = 200, PL = 42, PR = 12, PT = 12, PB = 32;
+const CL = PL, CR = W - PR, CT = PT, CB = H - PB, CW = CR - CL, CH = CB - CT;
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getSelected() { return (perfData?.channels || []).filter(ch => selectedIds.has(ch.id)); }
+function getAllDates(sel) { const d = new Set(); sel.forEach(ch => ch.clicks_by_day.forEach(r => d.add(r.date))); return [...d].sort(); }
+function getValues(ch, allDates) { const m = {}; ch.clicks_by_day.forEach(r => { m[r.date] = r.clicks; }); return allDates.map(d => m[d] || 0); }
+function xp(i, n) { return n <= 1 ? CL + CW / 2 : CL + (i / (n - 1)) * CW; }
+function yp(v, mx) { return CT + CH * (1 - v / mx); }
+
+function renderStats() {
+  const sel = getSelected();
+  const total = sel.reduce((s, ch) => s + ch.total_clicks, 0);
+  const allDates = getAllDates(sel);
+  const days = allDates.length;
+  document.getElementById('stat-total').textContent = total.toLocaleString();
+  document.getElementById('stat-avg').textContent = days > 0 ? (total / days).toFixed(1) : '0.0';
+  document.getElementById('stat-days').textContent = days.toLocaleString();
+}
+
+function renderChart() {
+  const sel = getSelected();
+  const allDates = getAllDates(sel);
+  const n = allDates.length;
+  const wrap = document.getElementById('chart-wrap');
+  if (sel.length === 0) { wrap.innerHTML = '<div class="flex items-center justify-center h-40 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-400">Select at least one channel to view the chart</div>'; document.getElementById('chart-legend').innerHTML = ''; return; }
+  if (n === 0) { wrap.innerHTML = '<div class="flex items-center justify-center h-40 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-400">No click data recorded yet</div>'; return; }
+
+  const channelValues = sel.map(ch => getValues(ch, allDates));
+  const maxVal = Math.max(...channelValues.flat(), 1);
+
+  let grid = '';
+  [0, 0.25, 0.5, 0.75, 1.0].forEach(t => {
+    const v = Math.round(maxVal * t);
+    const y = yp(v, maxVal);
+    grid += `<line x1="${CL}" y1="${y.toFixed(1)}" x2="${CR}" y2="${y.toFixed(1)}" stroke="#e2e8f0" stroke-width="1"/>`;
+    grid += `<text x="${CL - 5}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="9.5" fill="#94a3b8">${v}</text>`;
+  });
+
+  let xlabels = '';
+  const step = Math.max(1, Math.ceil(n / 7));
+  allDates.forEach((d, i) => {
+    if (i === 0 || i === n - 1 || i % step === 0)
+      xlabels += `<text x="${xp(i,n).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="9.5" fill="#94a3b8">${d.slice(5)}</text>`;
+  });
+
+  let lines = '';
+  sel.forEach((ch, ci) => {
+    const color = COLORS[ci % COLORS.length];
+    const vals = channelValues[ci];
+    if (n === 1) {
+      lines += `<circle cx="${xp(0,n).toFixed(1)}" cy="${yp(vals[0],maxVal).toFixed(1)}" r="5" fill="${color}"/>`;
+    } else {
+      const pts = vals.map((v, i) => `${xp(i,n).toFixed(1)},${yp(v,maxVal).toFixed(1)}`).join(' ');
+      lines += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"/>`;
+      lines += `<circle cx="${xp(0,n).toFixed(1)}" cy="${yp(vals[0],maxVal).toFixed(1)}" r="3.5" fill="${color}"/>`;
+      lines += `<circle cx="${xp(n-1,n).toFixed(1)}" cy="${yp(vals[n-1],maxVal).toFixed(1)}" r="3.5" fill="${color}"/>`;
+    }
+  });
+
+  window._cs = { allDates, sel, channelValues, maxVal, n };
+  wrap.innerHTML = `
+    <svg id="perf-chart" viewBox="0 0 ${W} ${H}" class="w-full h-auto">
+      ${grid}${xlabels}${lines}
+      <line id="hvl" x1="0" y1="${CT}" x2="0" y2="${CB}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 2" style="display:none" pointer-events="none"/>
+      <g id="hover-dots" pointer-events="none"></g>
+      <rect id="hover-zone" x="${CL}" y="${CT}" width="${CW}" height="${CH}" fill="transparent" style="cursor:crosshair"/>
+    </svg>`;
+
+  document.getElementById('hover-zone').addEventListener('mousemove', onHover);
+  document.getElementById('hover-zone').addEventListener('mouseleave', onHoverLeave);
+
+  document.getElementById('chart-legend').innerHTML = sel.map((ch, ci) =>
+    `<span class="flex items-center gap-1.5 text-xs text-slate-600">
+      <span class="inline-block w-3 h-3 rounded-full shrink-0" style="background:${COLORS[ci%COLORS.length]}"></span>
+      ${esc(ch.name)}
+    </span>`).join('');
+}
+
+function onHover(e) {
+  const s = window._cs;
+  if (!s) return;
+  const { allDates, sel, channelValues, maxVal, n } = s;
+  const svg = document.getElementById('perf-chart');
+  const svgRect = svg.getBoundingClientRect();
+  const svgX = (e.clientX - svgRect.left) / svgRect.width * W;
+  const rawIdx = n <= 1 ? 0 : (svgX - CL) / CW * (n - 1);
+  const idx = Math.max(0, Math.min(n - 1, Math.round(rawIdx)));
+  const x = xp(idx, n);
+  const hvl = document.getElementById('hvl');
+  hvl.setAttribute('x1', x.toFixed(1)); hvl.setAttribute('x2', x.toFixed(1)); hvl.style.display = '';
+  document.getElementById('hover-dots').innerHTML = sel.map((ch, ci) => {
+    const color = COLORS[ci % COLORS.length];
+    const cy = yp(channelValues[ci][idx], maxVal);
+    return `<circle cx="${x.toFixed(1)}" cy="${cy.toFixed(1)}" r="5" fill="${color}" stroke="white" stroke-width="2"/>`;
+  }).join('');
+  const tip = document.getElementById('chart-tooltip');
+  let html = `<div class="font-semibold text-slate-700 text-xs mb-2">${allDates[idx]}</div>`;
+  sel.forEach((ch, ci) => {
+    const color = COLORS[ci % COLORS.length];
+    html += `<div class="flex items-center gap-2 text-xs mb-1 last:mb-0">
+      <span class="inline-block w-2 h-2 rounded-full shrink-0" style="background:${color}"></span>
+      <span class="text-slate-600 flex-1">${esc(ch.name)}</span>
+      <span class="font-semibold text-slate-900 pl-2">${channelValues[ci][idx].toLocaleString()}</span>
+    </div>`;
+  });
+  tip.innerHTML = html; tip.classList.remove('hidden');
+  const container = document.getElementById('chart-container');
+  const cr = container.getBoundingClientRect();
+  let tx = e.clientX - cr.left + 14, ty = e.clientY - cr.top - 30;
+  if (tx + 170 > cr.width) tx = e.clientX - cr.left - 170;
+  tip.style.left = Math.max(0, tx) + 'px'; tip.style.top = Math.max(0, ty) + 'px';
+}
+
+function onHoverLeave() {
+  const hvl = document.getElementById('hvl'); if (hvl) hvl.style.display = 'none';
+  const dots = document.getElementById('hover-dots'); if (dots) dots.innerHTML = '';
+  document.getElementById('chart-tooltip').classList.add('hidden');
+}
+
+function renderComparing() {
+  const sel = getSelected();
+  const row = document.getElementById('comparing-row');
+  if (sel.length === 0) { row.innerHTML = '<span class="text-xs text-slate-400 italic">none selected</span>'; return; }
+  row.innerHTML = sel.map((ch, ci) => {
+    const c = COLORS[ci % COLORS.length];
+    return `<span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+      style="background:${c}18;color:${c};border:1px solid ${c}30">
+      <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${c}"></span>${esc(ch.name)}</span>`;
+  }).join('');
+}
+
+function renderSidebar() {
+  document.getElementById('channel-sidebar').innerHTML = perfData.channels.map((ch, ci) => {
+    const color = COLORS[ci % COLORS.length];
+    const checked = selectedIds.has(ch.id) ? 'checked' : '';
+    return `<label class="flex items-center gap-2.5 px-2 py-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+      <input type="checkbox" ${checked} class="w-3.5 h-3.5 rounded shrink-0" style="accent-color:${color}" onchange="toggleChannel(${ch.id})"/>
+      <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${color}"></span>
+      <span class="flex-1 text-sm text-slate-700 font-medium truncate">${esc(ch.name)}</span>
+      <span class="text-xs font-semibold text-slate-400 shrink-0">${Number(ch.total_clicks).toLocaleString()}</span>
+    </label>`;
+  }).join('');
+}
+
+function toggleChannel(id) { if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); updateView(); }
+function selectAll() { perfData.channels.forEach(ch => selectedIds.add(ch.id)); document.querySelectorAll('#channel-sidebar input[type=checkbox]').forEach(el => el.checked = true); updateView(); }
+function clearAll() { selectedIds.clear(); document.querySelectorAll('#channel-sidebar input[type=checkbox]').forEach(el => el.checked = false); updateView(); }
+function updateView() { renderStats(); renderChart(); renderComparing(); }
+
+function loadPerf() {
+  perfData = PERF_DATA[campaignId] || PERF_DATA[1];
+  document.title = `${perfData.name} Performance — Smart Campaign Builder`;
+  document.getElementById('back-link').href = `campaign.html?id=${campaignId}`;
+  document.getElementById('campaign-title').textContent = perfData.name;
+  perfData.channels.forEach(ch => selectedIds.add(ch.id));
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+  renderSidebar();
+  updateView();
+}
+
+window.toggleChannel = toggleChannel;
+window.selectAll = selectAll;
+window.clearAll = clearAll;
+loadPerf();
+</script>
+</body>
+</html>

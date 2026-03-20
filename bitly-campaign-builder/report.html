@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campaign Report — Bitly Campaign Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .channel-email    { background:#dbeafe; color:#1d4ed8; }
+    .channel-social   { background:#fce7f3; color:#be185d; }
+    .channel-paid     { background:#fef3c7; color:#b45309; }
+    .channel-organic  { background:#dcfce7; color:#15803d; }
+    .channel-partner  { background:#ede9fe; color:#6d28d9; }
+    .channel-other    { background:#f1f5f9; color:#475569; }
+    .bar-fill { transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+    .fade-in { animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+  <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="campaigns.html" class="text-slate-400 hover:text-slate-600 text-sm transition-colors">← Campaigns</a>
+      <span class="text-slate-200">|</span>
+      <h1 class="font-semibold text-slate-800 truncate" id="header-title">Campaign Report</h1>
+    </div>
+    <button id="sync-btn" onclick="syncStats()"
+      class="flex items-center gap-1.5 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 transition-colors">
+      <svg id="sync-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      <span id="sync-label">Sync Stats</span>
+    </button>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+  <div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl px-4 py-2.5">
+    Demo mode — data is stubbed. "Sync Stats" simulates a refresh with slightly randomized click counts.
+  </div>
+
+  <div id="report-content" class="fade-in space-y-6">
+
+    <!-- Campaign header -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <h2 class="text-2xl font-bold text-slate-800" id="camp-name"></h2>
+      <p class="text-slate-500 text-sm mt-1" id="camp-desc"></p>
+      <div class="mt-4 flex flex-wrap gap-4 text-sm text-slate-500" id="camp-meta"></div>
+    </div>
+
+    <!-- Stats overview -->
+    <div class="grid grid-cols-3 gap-3" id="stats-cards"></div>
+
+    <!-- Bar chart -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <h3 class="text-sm font-semibold text-slate-700 mb-5">Clicks by link</h3>
+      <div id="bar-chart" class="space-y-3"></div>
+    </div>
+
+    <!-- Links table -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-slate-700">All links</h3>
+        <span id="link-count-label" class="text-xs text-slate-400"></span>
+      </div>
+      <div id="links-list" class="divide-y divide-slate-100"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const STUB_DATA = {
+  1: {
+    name: 'Spring Sale 2026',
+    description: '30% off sitewide — email, social, paid search',
+    created_at: '2026-03-10T09:00:00',
+    dest_url: 'https://example.com/spring-sale',
+    links: [
+      { title:'Email Newsletter',    channel:'email',   channel_label:'Email',       bitlink_url:'https://bit.ly/3xEm4il',  long_url:'https://example.com/spring-sale?utm_source=email',   click_total:2140, tags:['spring-sale','email','newsletter'],  synced_at:'2026-03-19T10:00:00' },
+      { title:'Instagram Stories',   channel:'social',  channel_label:'Social Media', bitlink_url:'https://bit.ly/3iGsT0r',  long_url:'https://example.com/spring-sale?utm_source=ig',      click_total:1320, tags:['spring-sale','social','instagram'],  synced_at:'2026-03-19T10:00:00' },
+      { title:'Google Paid Search',  channel:'paid',    channel_label:'Paid Search',  bitlink_url:'https://bit.ly/3gP4dSr',  long_url:'https://example.com/spring-sale?utm_source=google',  click_total: 980, tags:['spring-sale','paid','cpc'],          synced_at:'2026-03-19T10:00:00' },
+      { title:'Organic / Blog',      channel:'organic', channel_label:'Organic/SEO',  bitlink_url:'https://bit.ly/3oRgSeo',  long_url:'https://example.com/spring-sale?utm_source=organic', click_total: 381, tags:['spring-sale','organic','seo'],       synced_at:'2026-03-19T10:00:00' },
+    ],
+  },
+  2: {
+    name: 'Product Launch — Horizon',
+    description: 'New product launch across all channels',
+    created_at: '2026-02-18T14:30:00',
+    dest_url: 'https://example.com/horizon',
+    links: [
+      { title:'Email Announcement',  channel:'email',   channel_label:'Email',        bitlink_url:'https://bit.ly/4hEmAnn',  long_url:'https://example.com/horizon?utm_source=email',   click_total:1200, tags:['horizon','email'],   synced_at:'2026-03-01T10:00:00' },
+      { title:'Social Organic',      channel:'social',  channel_label:'Social Media',  bitlink_url:'https://bit.ly/4sSocOr',  long_url:'https://example.com/horizon?utm_source=social',  click_total: 890, tags:['horizon','social'],  synced_at:'2026-03-01T10:00:00' },
+      { title:'Partner Placement',   channel:'partner', channel_label:'Partners',      bitlink_url:'https://bit.ly/4pPartn',  long_url:'https://example.com/horizon?utm_source=partner', click_total: 250, tags:['horizon','partner'], synced_at:'2026-03-01T10:00:00' },
+    ],
+  },
+  3: {
+    name: 'Q1 Partner Campaign',
+    description: 'Affiliate and partner co-marketing push',
+    created_at: '2026-01-05T10:00:00',
+    dest_url: 'https://example.com/partners',
+    links: [
+      { title:'Affiliate Link A',  channel:'partner', channel_label:'Partners', bitlink_url:'https://bit.ly/4aAff1',  long_url:'https://example.com/partners?aff=a', click_total:0, tags:['q1-partner','affiliate'], synced_at:null },
+      { title:'Affiliate Link B',  channel:'partner', channel_label:'Partners', bitlink_url:'https://bit.ly/4bAff2',  long_url:'https://example.com/partners?aff=b', click_total:0, tags:['q1-partner','affiliate'], synced_at:null },
+    ],
+  },
+};
+
+let campaignData = null;
+
+function init() {
+  const id = parseInt(new URLSearchParams(location.search).get('id')) || 1;
+  campaignData = JSON.parse(JSON.stringify(STUB_DATA[id] || STUB_DATA[1]));
+  render(campaignData);
+}
+
+async function syncStats() {
+  setSyncing(true);
+  await new Promise(r => setTimeout(r, 1000));
+  // Simulate small random increase in clicks
+  campaignData.links.forEach(l => {
+    if (l.click_total > 0) {
+      l.click_total += Math.floor(Math.random() * 40);
+      l.synced_at = new Date().toISOString();
+    }
+  });
+  render(campaignData);
+  setSyncing(false);
+}
+
+function setSyncing(on) {
+  document.getElementById('sync-btn').disabled = on;
+  document.getElementById('sync-label').textContent = on ? 'Syncing…' : 'Sync Stats';
+  document.getElementById('sync-icon').classList.toggle('animate-spin', on);
+}
+
+function render(data) {
+  document.getElementById('header-title').textContent = data.name;
+  document.getElementById('camp-name').textContent    = data.name;
+  document.getElementById('camp-desc').textContent    = data.description || '';
+
+  const date        = new Date(data.created_at).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+  const totalClicks = data.links.reduce((s, l) => s + (l.click_total || 0), 0);
+  const bestLink    = data.links.reduce((best, l) => (!best || l.click_total > best.click_total) ? l : best, null);
+
+  document.getElementById('camp-meta').innerHTML = `
+    <span>Created ${esc(date)}</span>
+    <span class="text-slate-300">·</span>
+    <span>${data.links.length} link${data.links.length !== 1 ? 's' : ''}</span>
+    ${data.dest_url ? `<span class="text-slate-300">·</span><a href="${esc(data.dest_url)}" target="_blank" class="text-indigo-500 hover:text-indigo-700 font-mono text-xs truncate max-w-[200px]">${esc(data.dest_url)}</a>` : ''}
+  `;
+
+  document.getElementById('stats-cards').innerHTML = `
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <div class="text-3xl font-bold text-slate-800">${totalClicks.toLocaleString()}</div>
+      <div class="text-xs text-slate-500 mt-1">Total clicks</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <div class="text-3xl font-bold text-slate-800">${data.links.length}</div>
+      <div class="text-xs text-slate-500 mt-1">Links tracked</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      ${bestLink && bestLink.click_total > 0
+        ? `<div class="text-lg font-bold text-slate-800 truncate">${esc(bestLink.channel_label||bestLink.channel)}</div>
+           <div class="text-xs text-slate-500 mt-1">Best channel · ${bestLink.click_total.toLocaleString()} clicks</div>`
+        : `<div class="text-xl font-bold text-slate-300">—</div>
+           <div class="text-xs text-slate-400 mt-1">Best channel</div>`}
+    </div>
+  `;
+
+  renderBarChart(data.links, totalClicks);
+  document.getElementById('link-count-label').textContent = `${data.links.length} link${data.links.length !== 1 ? 's' : ''}`;
+  document.getElementById('links-list').innerHTML = data.links.map(l => renderLinkRow(l, totalClicks)).join('');
+}
+
+function renderBarChart(links, totalClicks) {
+  const maxClicks = Math.max(...links.map(l => l.click_total || 0), 1);
+  const sorted    = [...links].sort((a, b) => (b.click_total||0) - (a.click_total||0));
+  const barColors = { email:'#3b82f6', social:'#ec4899', paid:'#f59e0b', organic:'#22c55e', partner:'#8b5cf6', other:'#94a3b8' };
+
+  document.getElementById('bar-chart').innerHTML = sorted.map(link => {
+    const clicks = link.click_total || 0;
+    const pct    = totalClicks > 0 ? Math.round((clicks / totalClicks) * 100) : 0;
+    const barPct = Math.round((clicks / maxClicks) * 100);
+    const color  = barColors[link.channel||'other'] || barColors.other;
+    return `
+    <div>
+      <div class="flex items-center gap-3 mb-1">
+        <span class="text-xs font-medium text-slate-600 w-32 flex-shrink-0 truncate">${esc(link.channel_label||link.channel)}</span>
+        <div class="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden">
+          <div class="bar-fill h-full rounded-full" style="width:${barPct}%;background:${color};min-width:${clicks>0?'8px':'0'}"></div>
+        </div>
+        <div class="flex items-baseline gap-1.5 w-24 flex-shrink-0 text-right">
+          <span class="text-sm font-bold text-slate-800">${clicks.toLocaleString()}</span>
+          <span class="text-xs text-slate-400">${pct}%</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLinkRow(link, totalClicks) {
+  const clicks = link.click_total || 0;
+  const pct    = totalClicks > 0 ? Math.round((clicks / totalClicks) * 100) : 0;
+  const synced = link.synced_at ? new Date(link.synced_at).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : null;
+  const tags   = Array.isArray(link.tags) ? link.tags : [];
+
+  return `
+  <div class="px-6 py-4">
+    <div class="flex items-start justify-between gap-4">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 channel-${link.channel||'other'}">${esc(link.channel_label||link.channel)}</span>
+          <span class="text-sm font-medium text-slate-800 truncate">${esc(link.title)}</span>
+        </div>
+        ${link.bitlink_url ? `
+          <div class="mt-1.5">
+            <span class="text-xs font-mono text-indigo-600">${esc(link.bitlink_url)}</span>
+          </div>` : ''}
+        ${link.long_url ? `<p class="text-xs text-slate-400 mt-1 truncate">→ ${esc(link.long_url)}</p>` : ''}
+        ${tags.length ? `
+          <div class="mt-2 flex flex-wrap gap-1">
+            ${tags.map(t => `<span class="bg-slate-100 text-slate-500 text-xs font-mono px-1.5 py-0.5 rounded">${esc(t)}</span>`).join('')}
+          </div>` : ''}
+        ${synced ? `<p class="text-xs text-slate-300 mt-2">Synced ${esc(synced)}</p>` : ''}
+      </div>
+      <div class="flex-shrink-0 text-right">
+        <div class="text-2xl font-bold ${clicks>0?'text-slate-800':'text-slate-300'}">${clicks.toLocaleString()}</div>
+        <div class="text-xs ${clicks>0?'text-slate-400':'text-slate-300'}">${pct>0?pct+'% of total':'no data'}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function esc(str) {
+  return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+init();
+</script>
+</body>
+</html>

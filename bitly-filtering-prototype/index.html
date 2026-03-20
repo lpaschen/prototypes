@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — Bitly</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .sidebar-icon { width: 20px; height: 20px; opacity: 0.6; }
+    .sidebar-icon.active { opacity: 1; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .filter-chip { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
+    .filter-chip button { opacity: 0.6; cursor: pointer; background: none; border: none; padding: 0; line-height: 1; font-size: 14px; color: #4338CA; }
+    .filter-chip button:hover { opacity: 1; }
+    .popover { position: absolute; background: white; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 100; min-width: 280px; }
+    .tag-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: #EEF2FF; color: #4338CA; }
+    .filter-banner { background: linear-gradient(135deg, #EEF2FF 0%, #F0FDF4 100%); border: 1px solid #C7D2FE; }
+    .donut-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    #donutChart { width: 100% !important; height: 100% !important; }
+    .table-row:hover { background: #F8FAFC; }
+    select:focus, input:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+    .animate-in { animation: fadeSlideIn 0.2s ease; }
+    @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .tab-active { background: white; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .tab-inactive { color: #6B7280; }
+    .progress-bar-fill { height: 6px; border-radius: 3px; background: #6366F1; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+<!-- Layout -->
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <div class="w-14 bg-[#0A1628] flex flex-col items-center py-3 gap-1 flex-shrink-0">
+    <!-- Logo -->
+    <div class="w-8 h-8 mb-4">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="#F97316"/>
+        <path d="M9 8h5v10.5a4.5 4.5 0 01-9 0V16h4v2.5a.5.5 0 001 0V8z" fill="white"/>
+        <path d="M16 8h7v4h-7v2h5a4 4 0 010 8h-5V8z" fill="white"/>
+        <rect x="16" y="18" width="5" height="4" rx="1" fill="#0A1628"/>
+      </svg>
+    </div>
+    <!-- Nav icons -->
+    <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    </button>
+    <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+    </button>
+    <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6.364 1.636l-.707.707M20 12h-1M17.657 17.657l-.707-.707M12 19v1M6.343 17.657l-.707.707M5 12H4M6.343 6.343l.707.707"/><circle cx="12" cy="12" r="4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>
+    </button>
+    <button class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/15 text-white">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    </button>
+    <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>
+    </button>
+    <div class="mt-auto mb-2">
+      <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden bg-white">
+
+    <!-- Top bar -->
+    <div class="h-12 border-b border-slate-200 flex items-center px-5 gap-3 flex-shrink-0">
+      <span class="text-xs text-slate-400 font-medium">briefs&amp;release-notes</span>
+      <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      <div class="flex-1"></div>
+      <div class="relative">
+        <input type="text" placeholder="Search..." class="h-7 pl-7 pr-3 text-xs bg-slate-100 border border-slate-200 rounded-md w-44 text-slate-600 placeholder-slate-400">
+        <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+      <button class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-600">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="1.5"/><path stroke-linecap="round" stroke-width="1.5" d="M12 8h.01M12 11v5"/></svg>
+      </button>
+      <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-semibold">C</div>
+    </div>
+
+    <!-- Page content -->
+    <div class="flex-1 overflow-y-auto bg-slate-50 p-6">
+
+      <!-- Breadcrumb -->
+      <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
+        <span class="hover:text-slate-600 cursor-pointer">Dashboards</span>
+        <span>/</span>
+        <span class="text-slate-600 font-medium">Analytics</span>
+      </div>
+
+      <!-- Page header -->
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold text-slate-900">Analytics</h1>
+          <button class="text-slate-400 hover:text-slate-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg bg-white hover:bg-slate-50">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download PDF
+          </button>
+          <button class="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white bg-[#0A1628] rounded-lg hover:bg-[#152238]">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add module
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="flex items-center gap-2 mb-5 flex-wrap relative" id="filter-bar">
+        <!-- Date range -->
+        <div class="flex items-center gap-1.5 h-8 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 cursor-pointer hover:border-slate-300">
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke-width="1.5"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="1.5"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="1.5"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="1.5"/></svg>
+          <span id="date-display">01/01/2024 → 02/01/2024</span>
+        </div>
+
+        <!-- Add filter button -->
+        <div class="relative">
+          <button id="add-filter-btn" onclick="toggleFilterPopover()"
+            class="flex items-center gap-1.5 h-8 px-3 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+            Add filters
+          </button>
+
+          <!-- Filter popover -->
+          <div id="filter-popover" class="popover animate-in hidden" style="top: calc(100% + 6px); left: 0;">
+            <div class="p-4">
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Filter by</p>
+
+              <!-- Tag filter -->
+              <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-700 mb-1.5">Tag</label>
+                <div class="relative">
+                  <select id="tag-select" onchange="applyTagFilter(this.value)"
+                    class="w-full h-8 pl-3 pr-7 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 appearance-none cursor-pointer">
+                    <option value="">Select tag…</option>
+                    <option value="Article">Article</option>
+                    <option value="Social Media">Social Media</option>
+                    <option value="ads">ads</option>
+                    <option value="ibex">ibex</option>
+                    <option value="media">media</option>
+                  </select>
+                  <svg class="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+              </div>
+
+              <!-- Campaign filter -->
+              <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-700 mb-1.5">Campaign</label>
+                <div class="relative">
+                  <select id="campaign-select" onchange="applyCampaignFilter(this.value)"
+                    class="w-full h-8 pl-3 pr-7 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 appearance-none cursor-pointer">
+                    <option value="">Select campaign…</option>
+                    <option value="Summer 2024">Summer 2024</option>
+                    <option value="Q1 Launch">Q1 Launch</option>
+                    <option value="Product Briefs">Product Briefs</option>
+                  </select>
+                  <svg class="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+              </div>
+
+              <!-- Keyword filter -->
+              <div class="mb-4">
+                <label class="block text-xs font-medium text-slate-700 mb-1.5">Link name contains</label>
+                <div class="flex gap-2">
+                  <input id="keyword-input" type="text" placeholder="e.g. meal ideas, promo…"
+                    class="flex-1 h-8 px-3 text-xs border border-slate-200 rounded-lg text-slate-700 placeholder-slate-400">
+                  <button onclick="applyKeywordFilter()" class="h-8 px-3 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Apply</button>
+                </div>
+              </div>
+
+              <div class="border-t border-slate-100 pt-3 flex justify-between">
+                <button onclick="clearAllFilters()" class="text-xs text-slate-500 hover:text-slate-700">Clear all</button>
+                <button onclick="toggleFilterPopover()" class="text-xs font-medium text-indigo-600 hover:text-indigo-700">Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active filter chips (injected here) -->
+        <div id="active-chips" class="flex items-center gap-1.5 flex-wrap"></div>
+
+        <!-- Context label -->
+        <span id="filter-context" class="text-xs text-slate-400 ml-1">Showing data for all links and QR Codes</span>
+      </div>
+
+      <!-- Filter banner (shown when filters active) -->
+      <div id="filter-banner" class="hidden filter-banner rounded-xl px-4 py-3 mb-5 flex items-start gap-3 animate-in">
+        <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p id="filter-banner-title" class="text-sm font-semibold text-slate-800"></p>
+          <p id="filter-banner-desc" class="text-xs text-slate-500 mt-0.5">Analytics below reflect only the links that match your active filters. New links matching these filters are included automatically.</p>
+        </div>
+        <button onclick="clearAllFilters()" class="text-xs text-slate-400 hover:text-slate-600 flex-shrink-0 mt-0.5">Clear filters</button>
+      </div>
+
+      <!-- Grid -->
+      <div class="grid grid-cols-2 gap-4">
+
+        <!-- Engagements over time -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="4" cy="4" r="1" fill="currentColor"/><circle cx="8" cy="4" r="1" fill="currentColor"/><circle cx="4" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="8" cy="12" r="1" fill="currentColor"/></svg>
+              <h2 class="text-sm font-semibold text-slate-800">Total engagements over time</h2>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-slate-500 rounded">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              </button>
+              <button class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-slate-500 rounded">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="relative" style="height: 160px;">
+            <canvas id="lineChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Engagements by referrer -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="4" cy="4" r="1" fill="currentColor"/><circle cx="8" cy="4" r="1" fill="currentColor"/><circle cx="4" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="8" cy="12" r="1" fill="currentColor"/></svg>
+              <h2 class="text-sm font-semibold text-slate-800">Total engagements by referrer</h2>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-slate-500 rounded">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              </button>
+              <button class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-slate-500 rounded">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="relative flex-shrink-0" style="width:120px;height:120px;">
+              <canvas id="donutChart"></canvas>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span id="donut-total" class="text-xl font-bold text-slate-800">722</span>
+                <span class="text-xs text-slate-400">CLICKS + SCANS</span>
+              </div>
+            </div>
+            <div id="referrer-legend" class="flex-1 space-y-1.5"></div>
+          </div>
+        </div>
+
+        <!-- Top performing -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="4" cy="4" r="1" fill="currentColor"/><circle cx="8" cy="4" r="1" fill="currentColor"/><circle cx="4" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="8" cy="12" r="1" fill="currentColor"/></svg>
+              <h2 class="text-sm font-semibold text-slate-800">Top performing by total engagements</h2>
+            </div>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-slate-100">
+                <th class="text-left font-medium text-slate-400 pb-2 pr-3">Type</th>
+                <th class="text-left font-medium text-slate-400 pb-2">Title</th>
+                <th class="text-right font-medium text-slate-400 pb-2">Engagements</th>
+                <th class="text-right font-medium text-slate-400 pb-2 pl-3">%</th>
+              </tr>
+            </thead>
+            <tbody id="top-links-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Engagements by location -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="4" cy="4" r="1" fill="currentColor"/><circle cx="8" cy="4" r="1" fill="currentColor"/><circle cx="4" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="8" cy="12" r="1" fill="currentColor"/></svg>
+              <h2 class="text-sm font-semibold text-slate-800">Total engagements by location</h2>
+            </div>
+          </div>
+          <div class="flex gap-1 mb-4 p-0.5 bg-slate-100 rounded-lg w-fit">
+            <button class="tab-active text-xs font-medium px-4 py-1.5 rounded-md transition-all" id="tab-countries" onclick="switchTab('countries')">Countries</button>
+            <button class="tab-inactive text-xs font-medium px-4 py-1.5 rounded-md transition-all" id="tab-cities" onclick="switchTab('cities')">Cities</button>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-slate-100">
+                <th class="text-left font-medium text-slate-400 pb-2 w-5">#</th>
+                <th class="text-left font-medium text-slate-400 pb-2">Country</th>
+                <th class="text-right font-medium text-slate-400 pb-2">Engagements</th>
+                <th class="text-right font-medium text-slate-400 pb-2 pl-3">%</th>
+              </tr>
+            </thead>
+            <tbody id="location-body"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Data ────────────────────────────────────────────────────────────────────
+const DATA = {
+  all: {
+    label: 'All links and QR Codes',
+    matchCount: null,
+    totalEngagements: 722,
+    timeSeries: [12, 8, 20, 15, 8, 22, 18, 12, 8, 25, 20, 15, 50],
+    timeLabels: ['12/03','12/05','12/07','12/09','12/11','12/12','12/13','12/14','12/15','12/16','12/17','12/18','12/19'],
+    referrers: [
+      { name: 'Google',   value: 402, color: '#4ECDC4' },
+      { name: 'LinkedIn', value: 218, color: '#6C63FF' },
+      { name: 'Facebook', value: 106, color: '#F7B731' },
+      { name: 'Unknown',  value: 70,  color: '#B0BEC5' },
+      { name: 'Reddit',   value: 18,  color: '#FF6B6B' },
+      { name: 'Instagram',value: 5,   color: '#FD79A8' },
+    ],
+    topLinks: [
+      { title: 'Summer campaign',        type: 'link', eng: 320, pct: 40, tags: [] },
+      { title: 'Menu poster',            type: 'qr',   eng: 176, pct: 22, tags: [] },
+      { title: 'Spring promo',           type: 'both', eng: 84,  pct: 14, tags: [] },
+      { title: 'bit.ly/mktg-campaign',   type: 'link', eng: 48,  pct: 8,  tags: [] },
+      { title: 'example.com/lunch-menu', type: 'link', eng: 37,  pct: 7,  tags: [] },
+      { title: 'bit.ly/pizza-pizza',     type: 'both', eng: 30,  pct: 5,  tags: [] },
+    ],
+    locations: [
+      { place: 'United States', eng: 176, pct: 52 },
+      { place: 'Germany',       eng: 72,  pct: 21 },
+      { place: 'Mexico',        eng: 48,  pct: 14 },
+      { place: 'Ireland',       eng: 22,  pct: 7  },
+      { place: 'United Kingdom',eng: 10,  pct: 3  },
+      { place: 'Brazil',        eng: 5,   pct: 2  },
+    ]
+  },
+  tag_Article: {
+    label: 'Tag: Article',
+    matchCount: 3,
+    totalEngagements: 184,
+    timeSeries: [3, 5, 8, 4, 2, 14, 10, 6, 3, 18, 12, 8, 25],
+    timeLabels: ['12/03','12/05','12/07','12/09','12/11','12/12','12/13','12/14','12/15','12/16','12/17','12/18','12/19'],
+    referrers: [
+      { name: 'Google',   value: 95,  color: '#4ECDC4' },
+      { name: 'LinkedIn', value: 62,  color: '#6C63FF' },
+      { name: 'Direct',   value: 18,  color: '#F7B731' },
+      { name: 'Unknown',  value: 9,   color: '#B0BEC5' },
+    ],
+    topLinks: [
+      { title: 'Prototype Testing Article',           type: 'link', eng: 89, pct: 48, tags: ['Article'] },
+      { title: '3 Exercises to Boost Team Creativity',type: 'link', eng: 62, pct: 34, tags: ['Article'] },
+      { title: 'LiB Pivot to Direct Selling',         type: 'link', eng: 33, pct: 18, tags: ['Article'] },
+    ],
+    locations: [
+      { place: 'United States',  eng: 98, pct: 53 },
+      { place: 'United Kingdom', eng: 42, pct: 23 },
+      { place: 'Canada',         eng: 28, pct: 15 },
+      { place: 'Australia',      eng: 16, pct: 9  },
+    ]
+  },
+  tag_Social_Media: {
+    label: 'Tag: Social Media',
+    matchCount: 8,
+    totalEngagements: 341,
+    timeSeries: [8, 4, 12, 9, 5, 16, 14, 8, 5, 19, 16, 12, 38],
+    timeLabels: ['12/03','12/05','12/07','12/09','12/11','12/12','12/13','12/14','12/15','12/16','12/17','12/18','12/19'],
+    referrers: [
+      { name: 'LinkedIn',  value: 142, color: '#6C63FF' },
+      { name: 'Facebook',  value: 98,  color: '#F7B731' },
+      { name: 'Instagram', value: 62,  color: '#FD79A8' },
+      { name: 'Direct',    value: 39,  color: '#4ECDC4' },
+    ],
+    topLinks: [
+      { title: 'LinkedIn Q1 post',   type: 'link', eng: 142, pct: 42, tags: ['Social Media'] },
+      { title: 'FB Spring campaign', type: 'link', eng: 98,  pct: 29, tags: ['Social Media'] },
+      { title: 'IG story link',      type: 'link', eng: 62,  pct: 18, tags: ['Social Media'] },
+      { title: 'Twitter thread',     type: 'link', eng: 39,  pct: 11, tags: ['Social Media'] },
+    ],
+    locations: [
+      { place: 'United States',  eng: 142, pct: 42 },
+      { place: 'United Kingdom', eng: 82,  pct: 24 },
+      { place: 'Germany',        eng: 68,  pct: 20 },
+      { place: 'Canada',         eng: 49,  pct: 14 },
+    ]
+  },
+  campaign_Summer_2024: {
+    label: 'Campaign: Summer 2024',
+    matchCount: 12,
+    totalEngagements: 520,
+    timeSeries: [10, 6, 18, 12, 7, 20, 17, 11, 7, 22, 18, 14, 48],
+    timeLabels: ['12/03','12/05','12/07','12/09','12/11','12/12','12/13','12/14','12/15','12/16','12/17','12/18','12/19'],
+    referrers: [
+      { name: 'Google',   value: 230, color: '#4ECDC4' },
+      { name: 'Direct',   value: 145, color: '#6C63FF' },
+      { name: 'LinkedIn', value: 89,  color: '#F7B731' },
+      { name: 'Unknown',  value: 56,  color: '#B0BEC5' },
+    ],
+    topLinks: [
+      { title: 'Summer campaign email',  type: 'link', eng: 230, pct: 44, tags: [] },
+      { title: 'Summer landing page',   type: 'link', eng: 145, pct: 28, tags: [] },
+      { title: 'Summer social promo',   type: 'link', eng: 89,  pct: 17, tags: ['Social Media'] },
+      { title: 'Summer sale QR',        type: 'qr',   eng: 56,  pct: 11, tags: [] },
+    ],
+    locations: [
+      { place: 'United States', eng: 280, pct: 54 },
+      { place: 'Mexico',        eng: 104, pct: 20 },
+      { place: 'Canada',        eng: 83,  pct: 16 },
+      { place: 'Brazil',        eng: 53,  pct: 10 },
+    ]
+  }
+};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let activeFilters = []; // [{type, value, key}]
+let currentDataKey = 'all';
+let lineChart, donutChart;
+let activeTab = 'countries';
+
+// ─── Charts ──────────────────────────────────────────────────────────────────
+function initCharts() {
+  const lCtx = document.getElementById('lineChart').getContext('2d');
+  lineChart = new Chart(lCtx, {
+    type: 'line',
+    data: {
+      labels: DATA.all.timeLabels,
+      datasets: [{
+        data: DATA.all.timeSeries,
+        borderColor: '#4ECDC4',
+        backgroundColor: 'rgba(78,205,196,0.08)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: '#4ECDC4',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        fill: true,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#0A1628', titleColor: '#fff', bodyColor: '#CBD5E1',
+        padding: 10, cornerRadius: 8, displayColors: false,
+        callbacks: { title: (i) => i[0].label, label: (i) => `${i.parsed.y} engagements` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94A3B8' } },
+        y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, color: '#94A3B8', stepSize: 10 }, beginAtZero: true }
+      }
+    }
+  });
+
+  const dCtx = document.getElementById('donutChart').getContext('2d');
+  const d = DATA.all;
+  donutChart = new Chart(dCtx, {
+    type: 'doughnut',
+    data: {
+      labels: d.referrers.map(r => r.name),
+      datasets: [{
+        data: d.referrers.map(r => r.value),
+        backgroundColor: d.referrers.map(r => r.color),
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#0A1628', titleColor: '#fff', bodyColor: '#CBD5E1',
+        padding: 10, cornerRadius: 8
+      }},
+      cutout: '72%',
+      animation: { animateRotate: true, duration: 400 }
+    }
+  });
+  renderReferrerLegend(d.referrers);
+}
+
+function renderReferrerLegend(referrers) {
+  const container = document.getElementById('referrer-legend');
+  container.innerHTML = referrers.map(r => `
+    <div class="flex items-center gap-2">
+      <div class="donut-legend-dot" style="background:${r.color}"></div>
+      <span class="text-xs text-slate-600 flex-1 truncate">${r.name}</span>
+      <span class="text-xs font-semibold text-slate-800">${r.value.toLocaleString()}</span>
+    </div>`).join('');
+}
+
+// ─── Render tables ───────────────────────────────────────────────────────────
+function renderTopLinks(links) {
+  const tbody = document.getElementById('top-links-body');
+  tbody.innerHTML = links.map(l => `
+    <tr class="table-row border-b border-slate-50 last:border-0">
+      <td class="py-2.5 pr-3">
+        <div class="flex items-center gap-1">
+          ${l.type === 'link' || l.type === 'both' ? `<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>` : ''}
+          ${l.type === 'qr' || l.type === 'both' ? `<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="1.5"/></svg>` : ''}
+        </div>
+      </td>
+      <td class="py-2.5">
+        <span class="text-indigo-600 hover:underline cursor-pointer font-medium">${l.title}</span>
+        ${l.tags && l.tags.length ? l.tags.map(t => `<span class="tag-badge ml-1.5">${t}</span>`).join('') : ''}
+      </td>
+      <td class="py-2.5 text-right font-semibold text-slate-700">${l.eng.toLocaleString()}</td>
+      <td class="py-2.5 text-right text-slate-400 pl-3">${l.pct}%</td>
+    </tr>`).join('');
+}
+
+function renderLocations(locations) {
+  const tbody = document.getElementById('location-body');
+  tbody.innerHTML = locations.map((l, i) => `
+    <tr class="table-row border-b border-slate-50 last:border-0">
+      <td class="py-2.5 text-slate-400 pr-3">${i + 1}</td>
+      <td class="py-2.5 text-slate-700">${l.place}</td>
+      <td class="py-2.5 text-right font-semibold text-slate-700">${l.eng.toLocaleString()}</td>
+      <td class="py-2.5 text-right text-slate-400 pl-3">${l.pct}%</td>
+    </tr>`).join('');
+}
+
+// ─── Update dashboard ────────────────────────────────────────────────────────
+function updateDashboard(dataKey) {
+  const d = DATA[dataKey] || DATA.all;
+
+  // Line chart
+  lineChart.data.labels = d.timeLabels;
+  lineChart.data.datasets[0].data = d.timeSeries;
+  lineChart.update('active');
+
+  // Donut chart
+  donutChart.data.labels = d.referrers.map(r => r.name);
+  donutChart.data.datasets[0].data = d.referrers.map(r => r.value);
+  donutChart.data.datasets[0].backgroundColor = d.referrers.map(r => r.color);
+  donutChart.update('active');
+  document.getElementById('donut-total').textContent = d.totalEngagements.toLocaleString();
+
+  // Legend
+  renderReferrerLegend(d.referrers);
+
+  // Tables
+  renderTopLinks(d.topLinks);
+  renderLocations(d.locations);
+}
+
+// ─── Filter logic ────────────────────────────────────────────────────────────
+function resolveDataKey() {
+  if (activeFilters.length === 0) return 'all';
+  // Use first filter to pick dataset (prototype simplification)
+  return activeFilters[0].key;
+}
+
+function refreshUI() {
+  const key = resolveDataKey();
+  const d = DATA[key] || DATA.all;
+
+  updateDashboard(key);
+
+  // Chips
+  const chipsEl = document.getElementById('active-chips');
+  chipsEl.innerHTML = activeFilters.map((f, i) => `
+    <span class="chip filter-chip">
+      <span class="text-indigo-400 mr-0.5">${f.type}:</span> ${f.value}
+      <button onclick="removeFilter(${i})" aria-label="Remove filter">×</button>
+    </span>`).join('');
+
+  // Context label
+  const ctx = document.getElementById('filter-context');
+  const banner = document.getElementById('filter-banner');
+  const bannerTitle = document.getElementById('filter-banner-title');
+
+  if (activeFilters.length === 0) {
+    ctx.textContent = 'Showing data for all links and QR Codes';
+    banner.classList.add('hidden');
+  } else {
+    const count = d.matchCount;
+    const labels = activeFilters.map(f => `${f.type}: ${f.value}`).join(' + ');
+    ctx.textContent = '';
+    banner.classList.remove('hidden');
+    bannerTitle.textContent = `Showing data for ${count} link${count !== 1 ? 's' : ''} matching ${labels}`;
+  }
+}
+
+function addFilter(type, value, key) {
+  // Remove same type if exists
+  activeFilters = activeFilters.filter(f => f.type !== type);
+  activeFilters.push({ type, value, key });
+  refreshUI();
+}
+
+function removeFilter(index) {
+  activeFilters.splice(index, 1);
+  // Reset select/input if needed
+  document.getElementById('tag-select').value = '';
+  document.getElementById('campaign-select').value = '';
+  document.getElementById('keyword-input').value = '';
+  refreshUI();
+}
+
+function clearAllFilters() {
+  activeFilters = [];
+  document.getElementById('tag-select').value = '';
+  document.getElementById('campaign-select').value = '';
+  document.getElementById('keyword-input').value = '';
+  refreshUI();
+  const p = document.getElementById('filter-popover');
+  if (!p.classList.contains('hidden')) p.classList.add('hidden');
+}
+
+function applyTagFilter(val) {
+  if (!val) {
+    activeFilters = activeFilters.filter(f => f.type !== 'Tag');
+    refreshUI();
+    return;
+  }
+  const key = 'tag_' + val.replace(/\s+/g, '_');
+  addFilter('Tag', val, DATA[key] ? key : 'all');
+}
+
+function applyCampaignFilter(val) {
+  if (!val) {
+    activeFilters = activeFilters.filter(f => f.type !== 'Campaign');
+    refreshUI();
+    return;
+  }
+  const key = 'campaign_' + val.replace(/\s+/g, '_');
+  addFilter('Campaign', val, DATA[key] ? key : 'all');
+}
+
+function applyKeywordFilter() {
+  const val = document.getElementById('keyword-input').value.trim();
+  if (!val) return;
+  addFilter('Keyword', `"${val}"`, 'all');
+  document.getElementById('filter-popover').classList.add('hidden');
+}
+
+// ─── Popover toggle ──────────────────────────────────────────────────────────
+function toggleFilterPopover() {
+  const p = document.getElementById('filter-popover');
+  p.classList.toggle('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  const btn = document.getElementById('add-filter-btn');
+  const pop = document.getElementById('filter-popover');
+  if (!btn.contains(e.target) && !pop.contains(e.target)) {
+    pop.classList.add('hidden');
+  }
+});
+
+// ─── Tab switch ──────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-countries').className = tab === 'countries'
+    ? 'tab-active text-xs font-medium px-4 py-1.5 rounded-md transition-all'
+    : 'tab-inactive text-xs font-medium px-4 py-1.5 rounded-md transition-all';
+  document.getElementById('tab-cities').className = tab === 'cities'
+    ? 'tab-active text-xs font-medium px-4 py-1.5 rounded-md transition-all'
+    : 'tab-inactive text-xs font-medium px-4 py-1.5 rounded-md transition-all';
+
+  const d = DATA[resolveDataKey()] || DATA.all;
+  if (tab === 'cities') {
+    renderLocations([
+      { place: 'New York, US', eng: 68, pct: 28 },
+      { place: 'London, UK',  eng: 42, pct: 17 },
+      { place: 'Berlin, DE',  eng: 31, pct: 13 },
+      { place: 'Chicago, US', eng: 28, pct: 11 },
+    ]);
+  } else {
+    renderLocations(d.locations);
+  }
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  renderTopLinks(DATA.all.topLinks);
+  renderLocations(DATA.all.locations);
+});
+</script>
+</body>
+</html>
