@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peer Benchmark — Display Options</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e8eaed;
+    min-height: 100vh;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 24px;
+    background: #1a1d27;
+    border-bottom: 1px solid #2a2d3a;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+
+  .nav-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #5a5f72;
+    padding-right: 20px;
+    white-space: nowrap;
+    border-right: 1px solid #2a2d3a;
+    margin-right: 8px;
+  }
+
+  .tab {
+    padding: 14px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #7a7f96;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s;
+    user-select: none;
+  }
+  .tab:hover { color: #c8cad6; }
+  .tab.active { color: #7c8cff; border-bottom-color: #7c8cff; }
+
+  /* ── Screens ── */
+  .screen { display: none; padding: 32px 24px; max-width: 960px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  .screen-header { margin-bottom: 28px; }
+  .screen-title { font-size: 18px; font-weight: 600; color: #e8eaed; margin-bottom: 4px; }
+  .screen-desc { font-size: 13px; color: #6b7280; }
+
+  /* ── Cards ── */
+  .card {
+    background: #1a1d27;
+    border: 1px solid #2a2d3a;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .card-sm { padding: 18px 20px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── Stat Cards ── */
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #5a5f72;
+    margin-bottom: 8px;
+  }
+  .stat-value { font-size: 36px; font-weight: 700; color: #e8eaed; line-height: 1; }
+  .stat-sub { font-size: 13px; color: #6b7280; margin-top: 6px; }
+
+  /* ── Benchmark Badge (Option A) ── */
+  .bench-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 12px;
+  }
+  .bench-badge.top { background: rgba(52, 211, 153, .12); color: #34d399; border: 1px solid rgba(52,211,153,.25); }
+  .bench-badge.mid { background: rgba(251, 191, 36, .12); color: #fbbf24; border: 1px solid rgba(251,191,36,.25); }
+  .bench-badge.low { background: rgba(248, 113, 113, .12); color: #f87171; border: 1px solid rgba(248,113,113,.25); }
+  .bench-badge svg { width: 14px; height: 14px; }
+
+  /* Percentile pill row */
+  .bench-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #2a2d3a;
+  }
+  .bench-row-label { font-size: 12px; color: #6b7280; }
+  .bench-row-val { font-size: 13px; font-weight: 600; color: #34d399; }
+
+  /* ── Percentile Bar (Option B) ── */
+  .pct-bar-wrap { margin-top: 20px; }
+  .pct-bar-track {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #f87171 0%, #fbbf24 40%, #34d399 75%, #7c8cff 100%);
+    position: relative;
+    margin-bottom: 6px;
+  }
+  .pct-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #7c8cff;
+    box-shadow: 0 0 0 3px rgba(124,140,255,.3);
+  }
+  .pct-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #5a5f72;
+    margin-top: 4px;
+  }
+  .pct-callout {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #7c8cff;
+  }
+  .pct-callout span { font-size: 13px; font-weight: 400; color: #6b7280; display: block; margin-top: 2px; }
+
+  /* ── Variance Band Chart ── */
+  .chart-wrap { position: relative; height: 220px; margin-top: 8px; }
+
+  .legend-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #7a7f96;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .legend-band {
+    width: 20px;
+    height: 8px;
+    border-radius: 2px;
+    opacity: .5;
+  }
+
+  /* ── Insight Card (Option D) ── */
+  .insight-card {
+    background: linear-gradient(135deg, #1e2235 0%, #1a1d27 100%);
+    border: 1px solid rgba(124,140,255,.3);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .insight-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(124,140,255,.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 20px;
+  }
+  .insight-title { font-size: 14px; font-weight: 600; color: #e8eaed; margin-bottom: 4px; }
+  .insight-body { font-size: 13px; color: #8b92a8; line-height: 1.5; }
+  .insight-highlight { color: #7c8cff; font-weight: 600; }
+  .insight-cta {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #7c8cff;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .insight-cta:hover { text-decoration: underline; }
+
+  /* ── Inline tooltip style (Option E) ── */
+  .inline-bench {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(52,211,153,.07);
+    border-left: 3px solid #34d399;
+    border-radius: 0 6px 6px 0;
+  }
+  .inline-bench-text { font-size: 12px; color: #34d399; font-weight: 500; }
+
+  /* ── Comparison Row (Option F) ── */
+  .comp-row { margin-top: 16px; }
+  .comp-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .comp-label { font-size: 12px; color: #8b92a8; width: 80px; flex-shrink: 0; }
+  .comp-bar-track { flex: 1; height: 6px; background: #2a2d3a; border-radius: 3px; overflow: hidden; }
+  .comp-bar-fill { height: 100%; border-radius: 3px; }
+  .comp-val { font-size: 12px; font-weight: 600; width: 50px; text-align: right; }
+
+  /* ── Contextual tooltip (Screen 3) ── */
+  .tooltip-demo {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+  }
+  .tooltip-popup {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #252835;
+    border: 1px solid #3a3d52;
+    border-radius: 10px;
+    padding: 14px 16px;
+    width: 220px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    pointer-events: none;
+  }
+  .tooltip-popup::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #3a3d52;
+  }
+  .tooltip-title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #5a5f72; margin-bottom: 8px; }
+  .tooltip-big { font-size: 24px; font-weight: 700; color: #7c8cff; }
+  .tooltip-desc { font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.4; }
+
+  /* ── Sparkline row ── */
+  .spark-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .spark-card {
+    flex: 1;
+    min-width: 160px;
+    background: #1f2234;
+    border: 1px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .spark-label { font-size: 11px; color: #5a5f72; margin-bottom: 4px; }
+  .spark-val { font-size: 22px; font-weight: 700; color: #e8eaed; }
+  .spark-bench-pill {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+  .spark-mini { margin-top: 8px; height: 36px; }
+
+  /* ── Section divider ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #5a5f72;
+    margin: 28px 0 12px;
+  }
+
+  /* ── Trend pill ── */
+  .trend-up { color: #34d399; font-size: 12px; font-weight: 600; }
+  .trend-dn { color: #f87171; font-size: 12px; font-weight: 600; }
+
+  /* ── Screen 4 — full dashboard ── */
+  .dash-metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 640px) {
+    .grid-2, .grid-3, .dash-metric-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Donut inset ── */
+  .donut-wrap { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+  .donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #e8eaed;
+  }
+  .donut-center small { font-size: 10px; color: #6b7280; font-weight: 400; }
+  .donut-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .donut-row { display: flex; align-items: center; gap: 14px; }
+
+  .tag-green { background: rgba(52,211,153,.15); color: #34d399; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; }
+  .tag-purple { background: rgba(124,140,255,.15); color: #7c8cff; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; }
+
+  /* screen 5 inline annotation */
+  .anno-marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(124,140,255,.18);
+    border: 1px solid rgba(124,140,255,.35);
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #a8b3ff;
+    padding: 2px 8px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid #2a2d3a;
+    margin: 24px 0;
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-label">Benchmark Options</span>
+  <div class="tab active" onclick="showScreen(0)">A — Stat Badge</div>
+  <div class="tab" onclick="showScreen(1)">B — Percentile Bar</div>
+  <div class="tab" onclick="showScreen(2)">C — Variance Band</div>
+  <div class="tab" onclick="showScreen(3)">D — Insight Card</div>
+  <div class="tab" onclick="showScreen(4)">E — Inline / Tooltip</div>
+  <div class="tab" onclick="showScreen(5)">F — Full Dashboard</div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     SCREEN A  —  Stat Card with Benchmark Badge
+     ══════════════════════════════════════════ -->
+<section class="screen active" id="screen-0">
+  <div class="screen-header">
+    <div class="screen-title">Option A — Benchmark Badge on Stat Cards</div>
+    <div class="screen-desc">A compact colored badge attached directly to the metric, showing peer standing at a glance.</div>
+  </div>
+
+  <p class="section-label" style="margin-top:0">Badge states — how it looks across different standing levels</p>
+  <div class="grid-3">
+
+    <!-- Top performer -->
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">48,392</div>
+      <div class="stat-sub">Last 30 days</div>
+      <div class="bench-badge top">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 10 8 5 13 10"/>
+        </svg>
+        Top 10% of similar accounts
+      </div>
+      <div class="bench-row">
+        <span class="bench-row-label">Peer median</span>
+        <span class="bench-row-val">32,100</span>
+      </div>
+    </div>
+
+    <!-- Near average -->
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">34,210</div>
+      <div class="stat-sub">Last 30 days</div>
+      <div class="bench-badge mid">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="8" x2="13" y2="8"/>
+        </svg>
+        Near average (55th %ile)
+      </div>
+      <div class="bench-row">
+        <span class="bench-row-label">Peer median</span>
+        <span class="bench-row-val" style="color:#fbbf24">32,100</span>
+      </div>
+    </div>
+
+    <!-- Below average -->
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">14,830</div>
+      <div class="stat-sub">Last 30 days</div>
+      <div class="bench-badge low">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 8 11 13 6"/>
+        </svg>
+        Bottom 28% of similar accounts
+      </div>
+      <div class="bench-row">
+        <span class="bench-row-label">Peer median</span>
+        <span class="bench-row-val" style="color:#f87171">32,100</span>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="section-label">Compact variant (badge only)</p>
+  <div class="grid-3">
+    <div class="card card-sm">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">48,392</div>
+      <div class="bench-badge top" style="margin-top:10px">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 10 8 5 13 10"/></svg>
+        Top 10%
+      </div>
+    </div>
+    <div class="card card-sm">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">34,210</div>
+      <div class="bench-badge mid" style="margin-top:10px">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="13" y2="8"/></svg>
+        Near average
+      </div>
+    </div>
+    <div class="card card-sm">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">14,830</div>
+      <div class="bench-badge low" style="margin-top:10px">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 8 11 13 6"/></svg>
+        Bottom 28%
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SCREEN B  —  Percentile Bar
+     ══════════════════════════════════════════ -->
+<section class="screen" id="screen-1">
+  <div class="screen-header">
+    <div class="screen-title">Option B — Percentile Bar</div>
+    <div class="screen-desc">A gradient spectrum bar with a marker showing exactly where the user lands relative to peers.</div>
+  </div>
+
+  <p class="section-label" style="margin-top:0">Bar states — how it looks across standing levels</p>
+  <div class="grid-3">
+
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">48,392</div>
+      <div class="stat-sub">vs. 1,240 similar accounts</div>
+      <div class="pct-bar-wrap">
+        <div class="pct-bar-track">
+          <div class="pct-marker" style="left: 90%;"></div>
+        </div>
+        <div class="pct-labels">
+          <span>0th</span><span>25th</span><span>50th</span><span>75th</span><span>100th</span>
+        </div>
+      </div>
+      <div class="pct-callout">
+        90th percentile
+        <span>Better than 90% of similar accounts</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">34,210</div>
+      <div class="stat-sub">vs. 1,240 similar accounts</div>
+      <div class="pct-bar-wrap">
+        <div class="pct-bar-track">
+          <div class="pct-marker" style="left: 55%; border-color:#fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.3);"></div>
+        </div>
+        <div class="pct-labels">
+          <span>0th</span><span>25th</span><span>50th</span><span>75th</span><span>100th</span>
+        </div>
+      </div>
+      <div class="pct-callout" style="color:#fbbf24">
+        55th percentile
+        <span>Slightly above the peer median</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value">14,830</div>
+      <div class="stat-sub">vs. 1,240 similar accounts</div>
+      <div class="pct-bar-wrap">
+        <div class="pct-bar-track">
+          <div class="pct-marker" style="left: 28%; border-color:#f87171; box-shadow: 0 0 0 3px rgba(248,113,113,.3);"></div>
+        </div>
+        <div class="pct-labels">
+          <span>0th</span><span>25th</span><span>50th</span><span>75th</span><span>100th</span>
+        </div>
+      </div>
+      <div class="pct-callout" style="color:#f87171">
+        28th percentile
+        <span>Below most similar accounts</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SCREEN C  —  Variance Band (Time Series)
+     ══════════════════════════════════════════ -->
+<section class="screen" id="screen-2">
+  <div class="screen-header">
+    <div class="screen-title">Option C — Variance Band on Time Series</div>
+    <div class="screen-desc">User's performance line overlaid on a shaded band showing the peer 25th–75th percentile range (and optionally the median).</div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+      <div>
+        <div class="stat-label">Engagements over time</div>
+        <div style="display:flex; align-items:baseline; gap:10px; margin-top:4px;">
+          <span style="font-size:28px; font-weight:700; color:#e8eaed">48,392</span>
+          <span class="trend-up">▲ 14% vs. prior period</span>
+        </div>
+      </div>
+      <span style="font-size:11px; color:#5a5f72; padding-top:2px">Last 12 weeks</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="varianceChart"></canvas>
+    </div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:#7c8cff"></div> You</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> Peer median</div>
+      <div class="legend-item"><div class="legend-band" style="background:#7c8cff"></div> Peer 25th–75th %ile</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="stat-label" style="margin-bottom:12px">Narrower band  (10th–90th %ile)</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="varianceChart2"></canvas>
+      </div>
+      <div class="legend-row" style="margin-top:8px">
+        <div class="legend-item"><div class="legend-dot" style="background:#7c8cff"></div> You</div>
+        <div class="legend-item"><div class="legend-band" style="background:#7c8cff"></div> Peer 10th–90th %ile</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-label" style="margin-bottom:12px">With top-10% threshold line</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="varianceChart3"></canvas>
+      </div>
+      <div class="legend-row" style="margin-top:8px">
+        <div class="legend-item"><div class="legend-dot" style="background:#7c8cff"></div> You</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fbbf24; width:20px; height:2px; border-radius:1px"></div> Top 10% threshold</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SCREEN D  —  Insight Card
+     ══════════════════════════════════════════ -->
+<section class="screen" id="screen-3">
+  <div class="screen-header">
+    <div class="screen-title">Option D — Insight Card</div>
+    <div class="screen-desc">A standalone callout surfaced proactively when a notable benchmark moment is detected.</div>
+  </div>
+
+  <p class="section-label">Positive achievement</p>
+  <div class="insight-card" style="margin-bottom:12px">
+    <div class="insight-icon">🏆</div>
+    <div>
+      <div class="insight-title">You're in the top 5% for engagements</div>
+      <div class="insight-body">
+        Your <span class="insight-highlight">48,392 engagements</span> this month place you in the
+        <span class="insight-highlight">top 5%</span> of similar accounts.
+        Your engagement rate has outperformed the peer median for 8 consecutive weeks.
+      </div>
+      <a class="insight-cta">See how you compare →</a>
+    </div>
+  </div>
+
+  <p class="section-label">Milestone crossing</p>
+  <div class="insight-card" style="margin-bottom:12px; border-color:rgba(52,211,153,.3)">
+    <div class="insight-icon" style="background:rgba(52,211,153,.15)">📈</div>
+    <div>
+      <div class="insight-title">You just crossed into the top 10%</div>
+      <div class="insight-body">
+        Based on the last 30 days, your total engagements have climbed into the
+        <span style="color:#34d399; font-weight:600">top 10%</span> of accounts with a similar audience size
+        — up from 22nd percentile last month.
+      </div>
+      <a class="insight-cta" style="color:#34d399">View benchmark breakdown →</a>
+    </div>
+  </div>
+
+  <p class="section-label">Below average state</p>
+  <div class="insight-card" style="border-color:rgba(251,191,36,.25)">
+    <div class="insight-icon" style="background:rgba(251,191,36,.12)">💡</div>
+    <div>
+      <div class="insight-title">Your engagements are below most similar accounts</div>
+      <div class="insight-body">
+        Your 14,830 total engagements rank at the <span style="color:#fbbf24; font-weight:600">28th percentile</span> compared to similar accounts.
+        Accounts in the top 25% average <span style="color:#fbbf24; font-weight:600">2.3× more engagements</span> — often driven by higher posting frequency and stronger hook copy.
+      </div>
+      <a class="insight-cta" style="color:#fbbf24">See what top accounts do differently →</a>
+    </div>
+  </div>
+
+  <p class="section-label">Compact / dismissible variant</p>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <div style="display:inline-flex; align-items:center; gap:10px; padding:10px 14px; background:#1a1d27; border:1px solid rgba(124,140,255,.3); border-radius:10px;">
+      <span style="font-size:18px">🏆</span>
+      <span style="font-size:13px; color:#e8eaed">Top <strong style="color:#7c8cff">5%</strong> for engagements vs. peers</span>
+      <span style="font-size:12px; color:#5a5f72; cursor:pointer; margin-left:4px">✕</span>
+    </div>
+    <div style="display:inline-flex; align-items:center; gap:10px; padding:10px 14px; background:#1a1d27; border:1px solid rgba(52,211,153,.25); border-radius:10px;">
+      <span style="font-size:18px">📈</span>
+      <span style="font-size:13px; color:#e8eaed">Just entered top <strong style="color:#34d399">10%</strong> this month</span>
+      <span style="font-size:12px; color:#5a5f72; cursor:pointer; margin-left:4px">✕</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SCREEN E  —  Inline / Contextual Tooltip
+     ══════════════════════════════════════════ -->
+<section class="screen" id="screen-4">
+  <div class="screen-header">
+    <div class="screen-title">Option E — Inline Annotation &amp; Hover Tooltip</div>
+    <div class="screen-desc">Benchmark context lives directly next to the number — no extra cards needed. Hover state reveals more detail.</div>
+  </div>
+
+  <p class="section-label" style="margin-top:0">Inline annotation — badge states</p>
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:6px;">
+        <span style="font-size:32px; font-weight:700; color:#e8eaed; line-height:1">48,392</span>
+        <span class="anno-marker">Top 10%</span>
+      </div>
+      <div class="stat-sub" style="margin-top:8px">vs. 1,240 similar accounts</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:6px;">
+        <span style="font-size:32px; font-weight:700; color:#e8eaed; line-height:1">34,210</span>
+        <span class="anno-marker" style="background:rgba(251,191,36,.15); border-color:rgba(251,191,36,.35); color:#fcd34d">55th %ile</span>
+      </div>
+      <div class="stat-sub" style="margin-top:8px">vs. 1,240 similar accounts</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:6px;">
+        <span style="font-size:32px; font-weight:700; color:#e8eaed; line-height:1">14,830</span>
+        <span class="anno-marker" style="background:rgba(248,113,113,.15); border-color:rgba(248,113,113,.35); color:#fca5a5">Bot. 28%</span>
+      </div>
+      <div class="stat-sub" style="margin-top:8px">vs. 1,240 similar accounts</div>
+    </div>
+  </div>
+
+  <p class="section-label">Left border callout — badge states</p>
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value" style="margin-top:6px">48,392</div>
+      <div class="inline-bench" style="margin-top:12px">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#34d399" stroke-width="2.5"><polyline points="3 10 8 5 13 10"/></svg>
+        <span class="inline-bench-text">Top 10% of similar accounts</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value" style="margin-top:6px">34,210</div>
+      <div class="inline-bench" style="margin-top:12px; border-left-color:#fbbf24; background:rgba(251,191,36,.07)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#fbbf24" stroke-width="2.5"><line x1="3" y1="8" x2="13" y2="8"/></svg>
+        <span class="inline-bench-text" style="color:#fbbf24">Near peer average (55th %ile)</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Total Engagements</div>
+      <div class="stat-value" style="margin-top:6px">14,830</div>
+      <div class="inline-bench" style="margin-top:12px; border-left-color:#f87171; background:rgba(248,113,113,.07)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#f87171" stroke-width="2.5"><polyline points="3 6 8 11 13 6"/></svg>
+        <span class="inline-bench-text" style="color:#f87171">Below average (28th %ile)</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="section-label">Hover tooltip — click the stat to preview</p>
+  <div class="grid-2">
+    <div class="card" style="text-align:center; padding:36px 24px;">
+      <div class="tooltip-demo" id="tooltipDemo" onclick="toggleTooltip()">
+        <div class="tooltip-popup" id="tooltipPopup" style="display:none;">
+          <div class="tooltip-title">Peer Benchmark</div>
+          <div class="tooltip-big">Top 10%</div>
+          <div class="tooltip-desc">
+            Your 48,392 engagements rank in the 90th percentile among 1,240 similar accounts this month.
+          </div>
+          <div style="margin-top:10px; display:flex; gap:12px; font-size:11px; color:#6b7280;">
+            <span>25th %ile: 18,200</span>
+            <span>Median: 32,100</span>
+            <span>You: 48,392</span>
+          </div>
+        </div>
+        <div class="stat-label">Total Engagements</div>
+        <div class="stat-value" style="margin-top:6px; cursor:pointer; text-decoration: underline dashed 1px #5a5f72; text-underline-offset:4px;">48,392</div>
+        <div style="font-size:11px; color:#5a5f72; margin-top:8px">Click to see benchmark</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-label" style="margin-bottom:16px">Sparkline with benchmark pill</div>
+      <div class="spark-row" style="margin-top:0">
+        <div class="spark-card">
+          <div class="spark-bench-pill tag-purple">Top 10%</div>
+          <div class="spark-label">Total Engagements</div>
+          <div class="spark-val">48.4K</div>
+          <canvas class="spark-mini" id="spark1"></canvas>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#5a5f72; margin-top:12px; line-height:1.5;">
+        Benchmark pill floats top-right of the sparkline card — visible at a glance without expanding the metric.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SCREEN F  —  Full Dashboard Combo
+     ══════════════════════════════════════════ -->
+<section class="screen" id="screen-5">
+  <div class="screen-header" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:28px;">
+    <div>
+      <div class="screen-title">Option F — Combined Dashboard View</div>
+      <div class="screen-desc">Multiple benchmark display patterns working together in a single analytics overview.</div>
+    </div>
+    <div style="position:relative; flex-shrink:0;">
+      <select id="dateRangePicker" onchange="applyDateRange(this.value)" style="
+        appearance: none;
+        background: #1a1d27;
+        border: 1px solid #3a3d52;
+        border-radius: 8px;
+        color: #e8eaed;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 8px 36px 8px 12px;
+        cursor: pointer;
+        outline: none;
+        font-family: inherit;
+      ">
+        <option value="mtd" selected>Month to date</option>
+        <option value="7d">Last 7 days</option>
+        <option value="14d">Last 14 days</option>
+        <option value="30d">Last 30 days</option>
+        <option value="qtd">Quarter to date</option>
+        <option value="90d">Last 90 days</option>
+        <option value="6m">Last 6 months</option>
+        <option value="ytd">Year to date</option>
+        <option value="12m">Last 12 months</option>
+      </select>
+      <svg style="position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none;" width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M2 4l4 4 4-4" stroke="#7a7f96" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Top insight banner -->
+  <div class="insight-card" style="margin-bottom:20px;">
+    <div class="insight-icon">🏆</div>
+    <div>
+      <div class="insight-title" id="dash-insight-title">You're in the top 10% for engagements — month to date</div>
+      <div class="insight-body">Your account outperformed <span class="insight-highlight">90% of similar accounts</span> — your best rank in the past 6 months.</div>
+    </div>
+  </div>
+
+  <!-- Total Engagements — single stat with peer benchmark -->
+  <div class="card card-sm" style="margin-bottom:16px;">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <div>
+        <div class="stat-label">Total Engagements</div>
+        <div style="display:flex; align-items:baseline; gap:10px; margin-top:6px;">
+          <span id="dash-eng-val" style="font-size:36px; font-weight:700; color:#e8eaed; line-height:1">48,392</span>
+          <span id="dash-eng-trend" class="trend-up">+14% vs. prior period</span>
+        </div>
+        <div class="bench-badge top" style="margin-top:10px;">
+          <svg viewBox="0 0 16 16" width="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 10 8 5 13 10"/></svg>
+          <span id="dash-eng-badge">Top 10% of similar accounts</span>
+        </div>
+      </div>
+      <div style="text-align:right; padding-top:2px;">
+        <div id="dash-range-label" style="font-size:11px; color:#5a5f72; margin-bottom:4px;">Month to date · 1,240 similar accounts</div>
+      </div>
+    </div>
+    <div class="bench-row">
+      <span class="bench-row-label">Peer median</span>
+      <span class="bench-row-val">32,100</span>
+    </div>
+  </div>
+
+  <!-- Variance chart + donut side by side -->
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="stat-label" style="margin-bottom:8px">Total Engagements vs. peer median</div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="dashVariance"></canvas>
+      </div>
+      <div class="legend-row" style="margin-top:8px">
+        <div class="legend-item"><div class="legend-dot" style="background:#7c8cff"></div> You</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> Peer median</div>
+        <div class="legend-item"><div class="legend-band" style="background:#7c8cff"></div> ±10% of peer median</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-label" style="margin-bottom:16px">Overall peer standing</div>
+      <div class="donut-row">
+        <div class="donut-wrap">
+          <canvas id="donutChart"></canvas>
+          <div class="donut-center"><span id="dash-donut-center">90</span><small>th %ile</small></div>
+        </div>
+        <div class="donut-info" style="margin-left:16px;">
+          <div id="dash-standing-label" style="font-size:22px; font-weight:700; color:#7c8cff; margin-bottom:4px">Top 10%</div>
+          <div style="font-size:12px; color:#8b92a8; line-height:1.5; margin-bottom:12px">
+            for total engagements<br>vs. 1,240 similar accounts
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="tag-purple">90th percentile</span>
+            <span class="tag-green">↑ from 22nd last mo.</span>
+          </div>
+        </div>
+      </div>
+      <hr class="section-divider">
+      <!-- metric breakdown -->
+      <div style="font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#5a5f72; margin-bottom:10px;">This month's metrics</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+
+        <!-- Engagements — with benchmark -->
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:12px; color:#8b92a8; flex:1;">Total Engagements</span>
+          <span style="font-size:13px; font-weight:700; color:#e8eaed;">48,392</span>
+          <span style="background:rgba(52,211,153,.12); color:#34d399; border:1px solid rgba(52,211,153,.25); font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; white-space:nowrap;">Top 10%</span>
+        </div>
+
+        <!-- Link Clicks -->
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:12px; color:#8b92a8; flex:1;">Link Clicks</span>
+          <span id="dash-lc-val" style="font-size:13px; font-weight:700; color:#e8eaed;">3,841</span>
+          <span id="dash-lc-trend" class="trend-dn" style="font-size:11px; width:44px; text-align:right;">-3%</span>
+        </div>
+
+        <!-- QR Code Scans -->
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:12px; color:#8b92a8; flex:1;">QR Code Scans</span>
+          <span id="dash-qr-val" style="font-size:13px; font-weight:700; color:#e8eaed;">1,204</span>
+          <span id="dash-qr-trend" class="trend-up" style="font-size:11px; width:44px; text-align:right;">+22%</span>
+        </div>
+
+        <!-- Page Button Clicks -->
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:12px; color:#8b92a8; flex:1;">Page Button Clicks</span>
+          <span id="dash-pb-val" style="font-size:13px; font-weight:700; color:#e8eaed;">892</span>
+          <span id="dash-pb-trend" class="trend-up" style="font-size:11px; width:44px; text-align:right;">+7%</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────
+const weeks = ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'];
+
+function rgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// variance band dataset helper
+function bandDatasets(user, median, lo, hi, userColor, bandColor) {
+  return [
+    // upper fill
+    { data: hi, fill: '+1', borderWidth: 0, pointRadius: 0, tension: .4,
+      backgroundColor: rgba(bandColor, .15) },
+    // lower fill
+    { data: lo, fill: false, borderWidth: 0, pointRadius: 0, tension: .4,
+      backgroundColor: 'transparent' },
+    // median
+    { data: median, borderColor: rgba('#34d399', .6), borderWidth: 1.5,
+      borderDash: [4,3], pointRadius: 0, tension: .4, fill: false },
+    // user
+    { data: user, borderColor: userColor, borderWidth: 2.5,
+      pointRadius: 3, pointBackgroundColor: userColor,
+      pointBorderColor: '#0f1117', pointBorderWidth: 2,
+      tension: .4, fill: false }
+  ];
+}
+
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { enabled: true } },
+  scales: {
+    x: { grid: { color: rgba('#ffffff', .04) }, ticks: { color: '#5a5f72', font: { size: 10 } } },
+    y: { grid: { color: rgba('#ffffff', .04) }, ticks: { color: '#5a5f72', font: { size: 10 } } }
+  }
+};
+
+// ── Screen C — Main variance chart ───────────────────────
+const userData    = [28000,31000,29500,33000,35000,38000,36500,40000,43000,44500,46000,48392];
+const medianData  = [28000,28500,29000,29200,29800,30500,31000,31500,32000,32100,32100,32100];
+const p25         = [18000,18500,19000,19200,19500,20000,20500,20800,21000,21200,21400,21600];
+const p75         = [36000,37000,37500,38000,39000,40000,40500,41000,42000,42200,42400,42500];
+
+new Chart(document.getElementById('varianceChart'), {
+  type: 'line',
+  data: { labels: weeks, datasets: bandDatasets(userData, medianData, p25, p75, '#7c8cff', '#7c8cff') },
+  options: chartDefaults
+});
+
+// ── Screen C — Narrow band ───────────────────────────────
+const p10 = p25.map(v => v - 4000);
+const p90 = p75.map(v => v + 6000);
+new Chart(document.getElementById('varianceChart2'), {
+  type: 'line',
+  data: { labels: weeks, datasets: bandDatasets(userData, medianData, p10, p90, '#7c8cff', '#7c8cff') },
+  options: { ...chartDefaults }
+});
+
+// ── Screen C — With threshold line ───────────────────────
+const top10line = weeks.map(() => 42000);
+new Chart(document.getElementById('varianceChart3'), {
+  type: 'line',
+  data: {
+    labels: weeks,
+    datasets: [
+      { data: p25, fill: '+1', borderWidth: 0, pointRadius: 0, tension: .4,
+        backgroundColor: rgba('#7c8cff', .12) },
+      { data: p75, fill: false, borderWidth: 0, pointRadius: 0, tension: .4 },
+      { data: top10line, borderColor: rgba('#fbbf24', .7), borderWidth: 1.5,
+        borderDash: [5,3], pointRadius: 0, fill: false, label: 'Top 10% threshold' },
+      { data: userData, borderColor: '#7c8cff', borderWidth: 2.5,
+        pointRadius: 3, pointBackgroundColor: '#7c8cff',
+        pointBorderColor: '#0f1117', pointBorderWidth: 2, tension: .4, fill: false }
+    ]
+  },
+  options: chartDefaults
+});
+
+// ── Sparklines ───────────────────────────────────────────
+function makeSparkline(id, data, color) {
+  new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels: data.map((_,i) => i),
+      datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, tension: .4, fill: true,
+        backgroundColor: rgba(color.replace(')',',0.15)').replace('rgb','rgba') || color, .15) }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } }
+    }
+  });
+}
+makeSparkline('spark1', [28,31,29,35,38,36,40,43,46,48], '#7c8cff');
+
+// ── Dashboard date-range data ─────────────────────────────
+const rangeData = {
+  mtd:  { label: 'Month to date',   labels: ['W1','W2','W3','W4'],                         user: [38000,42000,45000,48392], median: [30000,31000,31500,32100], engVal: '48,392', engTrend: '+14%', pctile: 90, standing: 'Top 10%', lc: '3,841', lcTrend: '-3%', qr: '1,204', qrTrend: '+22%', pb: '892', pbTrend: '+7%' },
+  '7d':  { label: 'Last 7 days',    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],    user: [5200,6100,5800,7200,6900,8100,7400], median: [4800,5000,5100,5200,5300,5100,5200], engVal: '46,700', engTrend: '+6%',  pctile: 85, standing: 'Top 15%', lc: '860',   lcTrend: '+2%',  qr: '274',   qrTrend: '+5%',  pb: '198', pbTrend: '+1%' },
+  '14d': { label: 'Last 14 days',   labels: ['W-2 Mon','W-2 Fri','W-1 Mon','W-1 Fri','Mon','Fri'], user: [34000,37000,40000,43000,45000,47000], median: [29000,30000,30500,31000,31500,32000], engVal: '47,000', engTrend: '+11%', pctile: 88, standing: 'Top 12%', lc: '3,600', lcTrend: '+0%',  qr: '1,100', qrTrend: '+14%', pb: '840', pbTrend: '+4%' },
+  '30d': { label: 'Last 30 days',   labels: ['W1','W2','W3','W4'],                         user: [36000,40000,44000,48392], median: [30500,31000,31500,32100], engVal: '48,392', engTrend: '+14%', pctile: 90, standing: 'Top 10%', lc: '3,841', lcTrend: '-3%',  qr: '1,204', qrTrend: '+22%', pb: '892', pbTrend: '+7%' },
+  qtd:  { label: 'Quarter to date', labels: ['Jan','Feb','Mar'],                            user: [41000,44500,48392], median: [30000,31000,32100], engVal: '133,784', engTrend: '+18%', pctile: 92, standing: 'Top 8%',  lc: '11,200', lcTrend: '+5%',  qr: '3,490', qrTrend: '+30%', pb: '2,540', pbTrend: '+12%' },
+  '90d': { label: 'Last 90 days',   labels: ['Jan','Feb','Mar'],                            user: [40000,44000,48392], median: [29500,30500,32100], engVal: '130,210', engTrend: '+16%', pctile: 89, standing: 'Top 11%', lc: '10,800', lcTrend: '+3%',  qr: '3,200', qrTrend: '+25%', pb: '2,400', pbTrend: '+9%' },
+  '6m':  { label: 'Last 6 months',  labels: ['Oct','Nov','Dec','Jan','Feb','Mar'],          user: [28000,31000,35000,40000,44500,48392], median: [27000,28000,29000,30000,31000,32100], engVal: '226,892', engTrend: '+22%', pctile: 87, standing: 'Top 13%', lc: '19,400', lcTrend: '+8%',  qr: '5,800', qrTrend: '+40%', pb: '4,200', pbTrend: '+15%' },
+  ytd:  { label: 'Year to date',    labels: ['Jan','Feb','Mar'],                            user: [40000,44000,48392], median: [29500,30500,32100], engVal: '133,784', engTrend: '+18%', pctile: 91, standing: 'Top 9%',  lc: '11,200', lcTrend: '+5%',  qr: '3,490', qrTrend: '+30%', pb: '2,540', pbTrend: '+12%' },
+  '12m': { label: 'Last 12 months', labels: ['Apr','Jun','Aug','Oct','Dec','Mar'],          user: [22000,26000,31000,36000,42000,48392], median: [24000,25500,27000,28500,30000,32100], engVal: '408,100', engTrend: '+31%', pctile: 86, standing: 'Top 14%', lc: '36,000', lcTrend: '+12%', qr: '10,200', qrTrend: '+55%', pb: '7,800', pbTrend: '+20%' },
+};
+
+// ── Dashboard variance chart (kept as reference for updates) ──
+const wksShort = rangeData.mtd.labels;
+const dashMedian = rangeData.mtd.median;
+const dashLo     = dashMedian.map(v => Math.round(v * 0.90));
+const dashHi     = dashMedian.map(v => Math.round(v * 1.10));
+const dashVarianceChart = new Chart(document.getElementById('dashVariance'), {
+  type: 'line',
+  data: {
+    labels: wksShort,
+    datasets: bandDatasets(
+      rangeData.mtd.user,
+      dashMedian, dashLo, dashHi,
+      '#7c8cff', '#7c8cff'
+    )
+  },
+  options: chartDefaults
+});
+
+// ── Donut ─────────────────────────────────────────────────
+const donutChartRef = new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [90, 10],
+      backgroundColor: ['#7c8cff', '#2a2d3a'],
+      borderWidth: 0,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true, cutout: '72%',
+    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+  }
+});
+
+// ── Date range picker ─────────────────────────────────────
+function applyDateRange(key) {
+  const d = rangeData[key];
+  if (!d) return;
+
+  // Update engagement stat card
+  document.getElementById('dash-eng-val').textContent   = d.engVal;
+  document.getElementById('dash-eng-trend').textContent = d.engTrend + ' vs. prior period';
+  document.getElementById('dash-eng-trend').className   = d.engTrend.startsWith('-') ? 'trend-dn' : 'trend-up';
+  document.getElementById('dash-range-label').textContent = d.label + ' · 1,240 similar accounts';
+
+  // Update insight banner
+  const pctLabel = d.pctile >= 90 ? `top ${100 - d.pctile}%` : `top ${100 - d.pctile}%`;
+  document.getElementById('dash-insight-title').textContent = `You're in the ${pctLabel} for engagements — ${d.label.toLowerCase()}`;
+
+  // Update donut
+  donutChartRef.data.datasets[0].data = [d.pctile, 100 - d.pctile];
+  donutChartRef.update();
+  document.getElementById('dash-donut-center').textContent = d.pctile;
+  document.getElementById('dash-standing-label').textContent = d.standing;
+
+  // Update metric rows
+  document.getElementById('dash-lc-val').textContent    = d.lc;
+  document.getElementById('dash-lc-trend').textContent  = d.lcTrend;
+  document.getElementById('dash-lc-trend').className    = d.lcTrend.startsWith('-') ? 'trend-dn' : 'trend-up';
+  document.getElementById('dash-qr-val').textContent    = d.qr;
+  document.getElementById('dash-qr-trend').textContent  = d.qrTrend;
+  document.getElementById('dash-pb-val').textContent    = d.pb;
+  document.getElementById('dash-pb-trend').textContent  = d.pbTrend;
+
+  // Update badge text
+  document.getElementById('dash-eng-badge').textContent = d.standing + ' of similar accounts';
+
+  // Update variance chart
+  const med = d.median;
+  const lo  = med.map(v => Math.round(v * 0.90));
+  const hi  = med.map(v => Math.round(v * 1.10));
+  dashVarianceChart.data.labels = d.labels;
+  dashVarianceChart.data.datasets = bandDatasets(d.user, med, lo, hi, '#7c8cff', '#7c8cff');
+  dashVarianceChart.update();
+}
+
+// ── Screen nav ────────────────────────────────────────────
+function showScreen(i) {
+  document.querySelectorAll('.screen').forEach((s, j) => s.classList.toggle('active', j === i));
+  document.querySelectorAll('.tab').forEach((t, j) => t.classList.toggle('active', j === i));
+}
+
+// ── Tooltip toggle ────────────────────────────────────────
+function toggleTooltip() {
+  const p = document.getElementById('tooltipPopup');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+</body>
+</html>
