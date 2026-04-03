@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Link Performance Comparison</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1a202c;
+      --muted: #718096;
+      --accent: #4f46e5;
+      --panel-width: 280px;
+      --radius: 12px;
+
+      --c0: #4f46e5; /* indigo */
+      --c1: #0ea5e9; /* sky */
+      --c2: #10b981; /* emerald */
+      --c3: #f59e0b; /* amber */
+      --c4: #ef4444; /* red */
+      --c5: #a855f7; /* purple */
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top Bar ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    header h1 span { font-size: 20px; }
+    .header-right { font-size: 12px; color: var(--muted); }
+
+    /* ── Main Layout ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Left Panel ── */
+    .sidebar {
+      width: var(--panel-width);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    .sidebar-controls {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-ghost {
+      font-size: 12px;
+      color: var(--accent);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-ghost:hover { background: #f0f0ff; }
+
+    .link-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 8px;
+    }
+    .link-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.12s;
+      margin-bottom: 2px;
+    }
+    .link-item:hover { background: var(--bg); }
+    .link-item.selected { background: #eef2ff; }
+    .link-item.disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .link-color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .link-checkbox {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .link-info { flex: 1; min-width: 0; }
+    .link-name {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .link-url {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .link-clicks {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .max-notice {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      padding: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Right Panel ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* Selected chips row */
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: white;
+    }
+    .chip .chip-dot {
+      width: 7px; height: 7px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+    }
+    .chips-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Summary cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .metric-card-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .metric-rows { display: flex; flex-direction: column; gap: 6px; }
+    .metric-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .metric-swatch {
+      width: 10px; height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .metric-link-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .metric-value { font-weight: 600; font-size: 13px; }
+
+    /* Charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .chart-card.full-width {
+      grid-column: 1 / -1;
+    }
+    .chart-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    .chart-wrap {
+      position: relative;
+    }
+
+    /* Devices multi-donut */
+    .donuts-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: space-around;
+    }
+    .donut-item { text-align: center; }
+    .donut-label {
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+
+    /* Locations table */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    tr:last-child td { border-bottom: none; }
+    .flag { font-size: 16px; margin-right: 6px; }
+    .td-bar-cell { width: 120px; }
+    .td-bar-bg {
+      height: 6px;
+      background: var(--bg);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .td-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+      color: var(--muted);
+      text-align: center;
+      gap: 12px;
+    }
+    .empty-state-icon { font-size: 48px; opacity: 0.5; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); }
+    .empty-state p { font-size: 13px; max-width: 300px; }
+
+    @media (max-width: 768px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .sidebar { width: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span>🔗</span> Link Performance</h1>
+  <div class="header-right">Select links from the left to compare</div>
+</header>
+
+<div class="layout">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Your Links</h2>
+      <div class="sidebar-controls">
+        <button class="btn-ghost" onclick="selectAll()">Select All</button>
+        <button class="btn-ghost" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+    <div class="link-list" id="linkList"></div>
+    <div class="max-notice">Compare up to 6 links at once</div>
+  </aside>
+
+  <!-- MAIN DASHBOARD -->
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+// ── MOCK DATA ──────────────────────────────────────────────────────────────
+
+const COLORS = ['#4f46e5','#0ea5e9','#10b981','#f59e0b','#ef4444','#a855f7'];
+
+const LINKS = [
+  { id: 0, name: 'Spring Sale Campaign',   url: 'bit.ly/spring-sale',     totalClicks: 14320 },
+  { id: 1, name: 'Newsletter CTA',         url: 'bit.ly/nl-cta-q1',       totalClicks: 8940  },
+  { id: 2, name: 'Instagram Bio Link',     url: 'linktr.ee/brand',        totalClicks: 22180 },
+  { id: 3, name: 'Product Launch Email',   url: 'bit.ly/launch-apr',      totalClicks: 5670  },
+  { id: 4, name: 'Twitter/X Promo',        url: 'bit.ly/x-promo-v2',      totalClicks: 11400 },
+  { id: 5, name: 'Partner Referral',       url: 'bit.ly/partner-ref',     totalClicks: 3820  },
+  { id: 6, name: 'YouTube End Card',       url: 'bit.ly/yt-endcard',      totalClicks: 9250  },
+  { id: 7, name: 'LinkedIn Article',       url: 'bit.ly/li-article-apr',  totalClicks: 4110  },
+  { id: 8, name: 'Podcast Sponsor Link',   url: 'bit.ly/pod-sponsor',     totalClicks: 6780  },
+  { id: 9, name: 'Black Friday Rerun',     url: 'bit.ly/bf-rerun',        totalClicks: 18650 },
+];
+
+// Generate 30-day time-series for each link
+function seedRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+const DAYS = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date('2026-01-20');
+  d.setDate(d.getDate() + i);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+});
+
+function genSeries(linkId) {
+  const rand = seedRandom(linkId * 137 + 42);
+  const base = LINKS[linkId].totalClicks / 30;
+  return Array.from({ length: 30 }, (_, i) => {
+    const trend = 1 + (i / 30) * 0.3 * (rand() - 0.3);
+    const spike = rand() > 0.85 ? 1.8 + rand() : 1;
+    return Math.round(base * trend * spike * (0.6 + rand() * 0.8));
+  });
+}
+
+const SERIES = LINKS.map((_, i) => genSeries(i));
+
+function genReferrers(linkId) {
+  const rand = seedRandom(linkId * 53 + 7);
+  const sources = ['Direct', 'Social', 'Email', 'Search', 'Other'];
+  const weights = sources.map(() => rand());
+  const total = weights.reduce((a, b) => a + b, 0);
+  return sources.map((s, i) => ({
+    source: s,
+    pct: Math.round((weights[i] / total) * 100)
+  })).sort((a, b) => b.pct - a.pct);
+}
+
+function genDevices(linkId) {
+  const rand = seedRandom(linkId * 29 + 3);
+  const m = 40 + Math.round(rand() * 30);
+  const d = 30 + Math.round(rand() * 20);
+  const t = 100 - m - d;
+  return [
+    { label: 'Mobile',  pct: m },
+    { label: 'Desktop', pct: Math.max(d, 5) },
+    { label: 'Tablet',  pct: Math.max(t, 3) },
+  ];
+}
+
+const LOCATIONS = [
+  { flag: '🇺🇸', country: 'United States' },
+  { flag: '🇬🇧', country: 'United Kingdom' },
+  { flag: '🇨🇦', country: 'Canada' },
+  { flag: '🇦🇺', country: 'Australia' },
+  { flag: '🇩🇪', country: 'Germany' },
+];
+
+function genLocations(linkId) {
+  const rand = seedRandom(linkId * 61 + 11);
+  const weights = LOCATIONS.map(() => rand());
+  const total = weights.reduce((a, b) => a + b, 0);
+  return LOCATIONS.map((loc, i) => ({
+    ...loc,
+    pct: Math.round((weights[i] / total) * 100)
+  })).sort((a, b) => b.pct - a.pct);
+}
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+
+let selected = new Set([0, 1]); // start with first 2 selected
+const MAX_SELECT = 6;
+
+// ── RENDER SIDEBAR ─────────────────────────────────────────────────────────
+
+function renderSidebar() {
+  const list = document.getElementById('linkList');
+  list.innerHTML = LINKS.map(link => {
+    const isSel = selected.has(link.id);
+    const colorIdx = getColorIndex(link.id);
+    const atMax = selected.size >= MAX_SELECT;
+    const disabled = !isSel && atMax;
+    return `
+      <div class="link-item ${isSel ? 'selected' : ''} ${disabled ? 'disabled' : ''}"
+           onclick="${disabled ? '' : `toggleLink(${link.id})`}">
+        <input type="checkbox" class="link-checkbox"
+               ${isSel ? 'checked' : ''}
+               ${disabled ? 'disabled' : ''}
+               onclick="event.stopPropagation(); ${disabled ? '' : `toggleLink(${link.id})`}"
+               />
+        ${isSel ? `<div class="link-color-dot" style="background:${COLORS[colorIdx]}"></div>` : '<div style="width:10px;flex-shrink:0"></div>'}
+        <div class="link-info">
+          <div class="link-name">${link.name}</div>
+          <div class="link-url">${link.url}</div>
+        </div>
+        <div class="link-clicks">${(link.totalClicks).toLocaleString()}</div>
+      </div>`;
+  }).join('');
+}
+
+function getColorIndex(linkId) {
+  const arr = [...selected];
+  return arr.indexOf(linkId);
+}
+
+function toggleLink(id) {
+  if (selected.has(id)) {
+    if (selected.size <= 1) return; // keep at least 1
+    selected.delete(id);
+  } else {
+    if (selected.size >= MAX_SELECT) return;
+    selected.add(id);
+  }
+  renderAll();
+}
+
+function selectAll() {
+  const toAdd = LINKS.slice(0, MAX_SELECT).map(l => l.id);
+  selected = new Set(toAdd);
+  renderAll();
+}
+
+function clearAll() {
+  selected = new Set([LINKS[0].id]);
+  renderAll();
+}
+
+// ── CHARTS REGISTRY ────────────────────────────────────────────────────────
+
+const charts = {};
+
+function destroyChart(key) {
+  if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+}
+
+// ── RENDER MAIN ─────────────────────────────────────────────────────────────
+
+function renderMain() {
+  const main = document.getElementById('main');
+  const selArr = [...selected];
+
+  if (selArr.length === 0) {
+    main.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <h3>No links selected</h3>
+        <p>Pick one or more links from the panel on the left to see performance data.</p>
+      </div>`;
+    return;
+  }
+
+  // Build HTML structure
+  main.innerHTML = `
+    <!-- chips -->
+    <div class="chips-row">
+      <span class="chips-label">Comparing:</span>
+      ${selArr.map((id, ci) => `
+        <span class="chip" style="background:${COLORS[ci]}">
+          <span class="chip-dot"></span>${LINKS[id].name}
+        </span>`).join('')}
+    </div>
+
+    <!-- summary metrics -->
+    <div class="metrics-grid" id="metricsGrid"></div>
+
+    <!-- clicks over time -->
+    <div class="chart-card full-width" style="margin-bottom:16px">
+      <div class="chart-title">Clicks Over Time — Last 30 Days</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <!-- referrers -->
+      <div class="chart-card">
+        <div class="chart-title">Traffic Sources</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="refChart"></canvas>
+        </div>
+      </div>
+
+      <!-- devices -->
+      <div class="chart-card">
+        <div class="chart-title">Device Breakdown</div>
+        <div class="donuts-row" id="donutsRow"></div>
+      </div>
+    </div>
+
+    <!-- locations -->
+    <div class="chart-card full-width" style="margin-bottom:24px">
+      <div class="chart-title">Top Locations</div>
+      <div class="table-wrap" id="locTable"></div>
+    </div>
+  `;
+
+  renderMetrics(selArr);
+  renderLineChart(selArr);
+  renderRefChart(selArr);
+  renderDevices(selArr);
+  renderLocations(selArr);
+}
+
+function renderMetrics(selArr) {
+  const metricDefs = [
+    {
+      label: 'Total Clicks',
+      fn: id => LINKS[id].totalClicks.toLocaleString()
+    },
+    {
+      label: 'Avg. Daily Clicks',
+      fn: id => Math.round(LINKS[id].totalClicks / 30).toLocaleString()
+    },
+  ];
+
+  const grid = document.getElementById('metricsGrid');
+  grid.innerHTML = metricDefs.map(m => `
+    <div class="metric-card">
+      <div class="metric-card-label">${m.label}</div>
+      <div class="metric-rows">
+        ${selArr.map((id, ci) => `
+          <div class="metric-row">
+            <div class="metric-swatch" style="background:${COLORS[ci]}"></div>
+            <div class="metric-link-name">${LINKS[id].name}</div>
+            <div class="metric-value">${m.fn(id)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function renderLineChart(selArr) {
+  destroyChart('line');
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  charts['line'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: DAYS,
+      datasets: selArr.map((id, ci) => ({
+        label: LINKS[id].name,
+        data: SERIES[id],
+        borderColor: COLORS[ci],
+        backgroundColor: COLORS[ci] + '18',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.35,
+        fill: false,
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, font: { size: 11 }, padding: 16 }
+        },
+        tooltip: { callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} clicks`
+        }}
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 }
+        },
+        y: {
+          grid: { color: '#f0f0f5' },
+          ticks: {
+            font: { size: 10 },
+            callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderRefChart(selArr) {
+  destroyChart('ref');
+  const ctx = document.getElementById('refChart').getContext('2d');
+  const sources = ['Direct','Social','Email','Search','Other'];
+  charts['ref'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sources,
+      datasets: selArr.map((id, ci) => {
+        const refs = genReferrers(id);
+        return {
+          label: LINKS[id].name,
+          data: sources.map(s => refs.find(r => r.source === s)?.pct || 0),
+          backgroundColor: COLORS[ci] + 'cc',
+          borderRadius: 4,
+          borderSkipped: false,
+        };
+      })
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: {
+        legend: {
+          display: selArr.length > 1,
+          position: 'bottom',
+          labels: { boxWidth: 12, font: { size: 11 }, padding: 12 }
+        },
+        tooltip: { callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x}%`
+        }}
+      },
+      scales: {
+        x: {
+          grid: { color: '#f0f0f5' },
+          ticks: { font: { size: 10 }, callback: v => v + '%' }
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderDevices(selArr) {
+  const row = document.getElementById('donutsRow');
+  row.innerHTML = '';
+  selArr.forEach((id, ci) => {
+    const devs = genDevices(id);
+    const wrap = document.createElement('div');
+    wrap.className = 'donut-item';
+    const canvas = document.createElement('canvas');
+    canvas.width = 120; canvas.height = 120;
+    canvas.style.width = '120px'; canvas.style.height = '120px';
+    const label = document.createElement('div');
+    label.className = 'donut-label';
+    label.style.color = COLORS[ci];
+    label.textContent = LINKS[id].name;
+    wrap.appendChild(canvas);
+    wrap.appendChild(label);
+    row.appendChild(wrap);
+
+    const key = 'donut_' + id;
+    destroyChart(key);
+    charts[key] = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: devs.map(d => d.label),
+        datasets: [{
+          data: devs.map(d => d.pct),
+          backgroundColor: [
+            COLORS[ci],
+            COLORS[ci] + '88',
+            COLORS[ci] + '44',
+          ],
+          borderWidth: 0,
+          hoverOffset: 4,
+        }]
+      },
+      options: {
+        responsive: false,
+        cutout: '62%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed}%`
+          }}
+        }
+      }
+    });
+  });
+
+  // Shared device legend
+  const legend = document.createElement('div');
+  legend.style.cssText = 'width:100%;margin-top:12px;display:flex;gap:14px;justify-content:center;font-size:12px;color:#718096;';
+  ['Mobile','Desktop','Tablet'].forEach(d => {
+    const item = document.createElement('span');
+    item.style.display = 'flex'; item.style.alignItems = 'center'; item.style.gap = '4px';
+    item.innerHTML = `<span style="width:10px;height:10px;background:#cbd5e0;border-radius:2px;display:inline-block"></span>${d}`;
+    legend.appendChild(item);
+  });
+  document.getElementById('donutsRow').appendChild(legend);
+}
+
+function renderLocations(selArr) {
+  const container = document.getElementById('locTable');
+  const headers = ['Country', ...selArr.map((id, ci) =>
+    `<span style="color:${COLORS[ci]};font-weight:600">${LINKS[id].name}</span>`)];
+
+  const locData = selArr.map(id => genLocations(id));
+  const maxPct = Math.max(...locData.flatMap(ld => ld.map(l => l.pct)));
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>${headers.map(h => `<th>${h}</th>`).join('')}<th>Share</th></tr>
+      </thead>
+      <tbody>
+        ${LOCATIONS.map((loc, li) => {
+          const vals = locData.map(ld => ld[li]?.pct || 0);
+          return `<tr>
+            <td><span class="flag">${loc.flag}</span>${loc.country}</td>
+            ${vals.map((v, ci) => `<td style="font-weight:600;color:${COLORS[ci]}">${v}%</td>`).join('')}
+            <td class="td-bar-cell">
+              <div class="td-bar-bg">
+                <div class="td-bar-fill" style="width:${Math.round((vals[0]/maxPct)*100)}%;background:${COLORS[0]}"></div>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── BOOT ───────────────────────────────────────────────────────────────────
+
+function renderAll() {
+  renderSidebar();
+  renderMain();
+}
+
+renderAll();
+</script>
+</body>
+</html>

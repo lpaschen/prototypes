@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Campaign Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    .label-sm {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 2px;
+    }
+
+    .channel-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .channel-email   { background: #dbeafe; color: #1d4ed8; }
+    .channel-social  { background: #fce7f3; color: #9d174d; }
+    .channel-paid    { background: #fef3c7; color: #92400e; }
+    .channel-organic { background: #d1fae5; color: #065f46; }
+
+    .utm-chip {
+      display: inline-block;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+      font-family: monospace;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .tag-chip {
+      display: inline-block;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      color: #4338ca;
+      font-family: monospace;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .copy-btn {
+      background: #4f46e5;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: #4338ca; }
+    .copy-btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+    .copy-btn-secondary:hover { background: #e2e8f0; }
+    .copy-btn-success { background: #059669 !important; color: white !important; }
+
+    .channel-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #4f46e5;
+      cursor: pointer;
+    }
+
+    /* ── Performance dashboard ── */
+    .progress-track {
+      background: #e2e8f0;
+      border-radius: 9999px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 9999px;
+      transition: width 0.6s ease;
+    }
+    .progress-fill-total  { background: linear-gradient(90deg, #4f46e5, #7c3aed); }
+    .progress-fill-email   { background: #3b82f6; }
+    .progress-fill-social  { background: #ec4899; }
+    .progress-fill-paid    { background: #f59e0b; }
+    .progress-fill-organic { background: #10b981; }
+    .progress-fill-default { background: #6366f1; }
+
+    .trend-bar-wrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 48px;
+    }
+    .trend-bar {
+      flex: 1;
+      border-radius: 3px 3px 0 0;
+      background: #c7d2fe;
+      min-height: 4px;
+      transition: background 0.15s;
+    }
+    .trend-bar:hover { background: #4f46e5; }
+    .trend-label {
+      font-size: 0.6rem;
+      color: #94a3b8;
+      text-align: center;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 px-6 py-4">
+    <div class="max-w-4xl mx-auto flex items-center gap-3">
+      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-slate-900">Smart Campaign Builder</h1>
+        <p class="text-xs text-slate-500">Auto-scaffold Bitly links &amp; UTM tags from your campaign goals</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- ── FORM ── -->
+    <form id="campaign-form" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+
+      <!-- Section 1: Campaign -->
+      <div class="px-6 py-5 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">1 · Campaign</h2>
+        <div>
+          <label for="campaign-name" class="block text-sm font-medium text-slate-700 mb-1">Campaign Name</label>
+          <input
+            type="text"
+            id="campaign-name"
+            placeholder="e.g. Summer Sale 2026"
+            required
+            class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <p class="label-sm mt-2">Clean name preview</p>
+          <span id="name-preview" class="text-sm font-mono text-slate-400">—</span>
+        </div>
+      </div>
+
+      <!-- Section 2: Goal -->
+      <div class="px-6 py-5 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">2 · Goal</h2>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2.5">
+            <span class="text-sm font-medium text-slate-500">Goal Type</span>
+            <span class="text-sm font-semibold text-slate-800">Clicks</span>
+          </div>
+          <div class="flex-1 max-w-xs">
+            <label for="goal-target" class="block text-sm font-medium text-slate-700 mb-1">Click Target</label>
+            <input
+              type="number"
+              id="goal-target"
+              placeholder="e.g. 500"
+              min="1"
+              required
+              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Channels -->
+      <div class="px-6 py-5 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">3 · Channels</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <label class="channel-checkbox flex items-center gap-2 border border-slate-200 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" id="ch-email" value="email" />
+            <span class="channel-badge channel-email">Email</span>
+          </label>
+          <label class="channel-checkbox flex items-center gap-2 border border-slate-200 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" id="ch-social" value="social" />
+            <span class="channel-badge channel-social">Social</span>
+          </label>
+          <label class="channel-checkbox flex items-center gap-2 border border-slate-200 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" id="ch-paid" value="paid" />
+            <span class="channel-badge channel-paid">Paid</span>
+          </label>
+          <label class="channel-checkbox flex items-center gap-2 border border-slate-200 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" id="ch-organic" value="organic" />
+            <span class="channel-badge channel-organic">Organic</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Section 4: Destination URLs -->
+      <div class="px-6 py-5 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">4 · Destination URLs</h2>
+        <div id="url-fields" class="space-y-3"></div>
+      </div>
+
+      <!-- Submit -->
+      <div class="px-6 py-5 bg-slate-50 flex items-center justify-between">
+        <p class="text-xs text-slate-400">Links are generated locally — no data is sent anywhere.</p>
+        <button
+          type="submit"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition-colors shadow-sm"
+        >
+          Build Campaign →
+        </button>
+      </div>
+    </form>
+
+    <!-- ── RESULTS ── -->
+    <section id="results-section" class="hidden space-y-5">
+      <div id="summary-header" class="bg-white border border-slate-200 rounded-xl px-5 py-4 shadow-sm"></div>
+      <div id="links-container" class="space-y-4"></div>
+
+      <!-- Performance Dashboard -->
+      <div id="perf-section" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <!-- header -->
+        <div class="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+          <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <span class="font-semibold text-slate-800 text-sm">Campaign Performance</span>
+          <span class="text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0 rounded">Simulated</span>
+          <span id="perf-status-badge" class="ml-auto text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+        </div>
+
+        <div class="p-5 space-y-6">
+          <!-- Total progress -->
+          <div>
+            <div class="flex items-end justify-between mb-2">
+              <div>
+                <p class="label-sm">Total Clicks vs Goal</p>
+                <p id="perf-total-label" class="text-2xl font-bold text-slate-800"></p>
+              </div>
+              <span id="perf-pct-label" class="text-3xl font-bold text-indigo-600"></span>
+            </div>
+            <div class="progress-track">
+              <div id="perf-total-bar" class="progress-fill progress-fill-total" style="width:0%"></div>
+            </div>
+            <p id="perf-pace-label" class="text-xs text-slate-400 mt-1.5"></p>
+          </div>
+
+          <!-- Per-channel breakdown -->
+          <div>
+            <p class="label-sm mb-3">By Channel</p>
+            <div id="perf-channels" class="space-y-3"></div>
+          </div>
+
+          <!-- 7-day trend -->
+          <div>
+            <p class="label-sm mb-2">Last 7 Days</p>
+            <div id="perf-trend" class="trend-bar-wrap"></div>
+            <div id="perf-trend-labels" class="flex gap-px mt-0.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button
+          id="export-btn"
+          class="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export JSON
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+<script>
+// ── naming.js ──────────────────────────────────────────────────
+function cleanName(input) {
+  if (!input) return '';
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function buildLinkName(campaignClean, channel, dateStr) {
+  return [campaignClean, channel, dateStr].filter(Boolean).join('-');
+}
+
+function buildGoalSlug(label, target) {
+  return cleanName(label) + '-' + target;
+}
+
+// ── scaffold.js ────────────────────────────────────────────────
+const CHANNEL_CONFIG = {
+  email:   { source: 'email',      medium: 'email'   },
+  social:  { source: 'social',     medium: 'social'  },
+  paid:    { source: 'google-ads', medium: 'cpc'     },
+  organic: { source: 'organic',    medium: 'organic' },
+};
+
+function buildUTMString(params) {
+  return Object.entries(params)
+    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+    .join('&');
+}
+
+function mockShortLink(seed) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  let n = Math.abs(hash);
+  for (let i = 0; i < 6; i++) {
+    result += chars[n % chars.length];
+    n = Math.floor(n / chars.length) || (n + 7919);
+  }
+  return 'bit.ly/m-' + result;
+}
+
+function scaffoldCampaign({ name, goalLabel, goalTarget, channels, urls }) {
+  const campaignClean = cleanName(name);
+  const goalSlug = buildGoalSlug(goalLabel, goalTarget);
+  const dateStr = new Date().toISOString().slice(0, 7);
+
+  const links = channels.map(function(channel) {
+    const config = CHANNEL_CONFIG[channel];
+    const destinationUrl = (urls[channel] || '').trim() || 'https://example.com';
+    const linkName = buildLinkName(campaignClean, channel, dateStr);
+
+    const utms = {
+      utm_campaign: campaignClean,
+      utm_source:   config.source,
+      utm_medium:   config.medium,
+      utm_content:  goalSlug,
+    };
+
+    const separator = destinationUrl.includes('?') ? '&' : '?';
+    const fullUrl = destinationUrl + separator + buildUTMString(utms);
+    const shortUrl = mockShortLink(campaignClean + '-' + channel);
+
+    const tags = [
+      campaignClean,
+      channel,
+      cleanName(goalLabel),
+      'target-' + goalTarget,
+    ];
+
+    return { channel, linkName, destinationUrl, fullUrl, shortUrl, utms, tags };
+  });
+
+  return {
+    campaignName: name,
+    campaignClean,
+    goal: { label: goalLabel, target: goalTarget, slug: goalSlug },
+    createdAt: new Date().toISOString(),
+    links,
+  };
+}
+
+// ── app.js ─────────────────────────────────────────────────────
+const CHANNELS = ['email', 'social', 'paid', 'organic'];
+let currentResult = null;
+
+const GOAL_LABEL = 'clicks';
+
+const form            = document.getElementById('campaign-form');
+const nameInput       = document.getElementById('campaign-name');
+const namePreview     = document.getElementById('name-preview');
+const goalTargetInput = document.getElementById('goal-target');
+const urlFields      = document.getElementById('url-fields');
+const resultsSection = document.getElementById('results-section');
+const linksContainer = document.getElementById('links-container');
+const exportBtn      = document.getElementById('export-btn');
+const summaryHeader  = document.getElementById('summary-header');
+
+// Live name preview
+nameInput.addEventListener('input', function() {
+  const clean = cleanName(nameInput.value);
+  namePreview.textContent = clean || '—';
+  namePreview.className = clean
+    ? 'text-sm font-mono text-emerald-600 mt-1'
+    : 'text-sm font-mono text-slate-400 mt-1';
+});
+
+// Channel checkboxes → show/hide URL fields (preserves typed values on re-render)
+function renderUrlFields() {
+  const checked = CHANNELS.filter(function(ch) {
+    const el = document.getElementById('ch-' + ch);
+    return el && el.checked;
+  });
+  if (checked.length === 0) {
+    urlFields.innerHTML = '<p class="text-sm text-slate-400 italic">Select at least one channel above.</p>';
+    return;
+  }
+  // Save any values already typed before replacing innerHTML
+  const saved = {};
+  CHANNELS.forEach(function(ch) {
+    const el = document.getElementById('url-' + ch);
+    if (el) saved[ch] = el.value;
+  });
+  urlFields.innerHTML = checked.map(function(ch) {
+    return '<div class="flex items-center gap-3">' +
+      '<label class="w-20 text-sm font-medium text-slate-600 capitalize shrink-0">' + ch + '</label>' +
+      '<input type="text" id="url-' + ch + '" placeholder="https://yoursite.com/landing" ' +
+      'value="' + escapeHtml(saved[ch] || '') + '" ' +
+      'class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />' +
+      '</div>';
+  }).join('');
+}
+
+CHANNELS.forEach(function(ch) {
+  const el = document.getElementById('ch-' + ch);
+  if (el) el.addEventListener('change', renderUrlFields);
+});
+renderUrlFields();
+
+// Form submit
+form.addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const selectedChannels = CHANNELS.filter(function(ch) {
+    const el = document.getElementById('ch-' + ch);
+    return el && el.checked;
+  });
+
+  if (selectedChannels.length === 0) {
+    alert('Please select at least one channel.');
+    return;
+  }
+
+  const urls = {};
+  selectedChannels.forEach(function(ch) {
+    const el = document.getElementById('url-' + ch);
+    urls[ch] = el ? el.value.trim() : '';
+  });
+
+  currentResult = scaffoldCampaign({
+    name: nameInput.value.trim(),
+    goalLabel: GOAL_LABEL,
+    goalTarget: parseInt(goalTargetInput.value, 10) || 0,
+    channels: selectedChannels,
+    urls: urls,
+  });
+
+  renderResults(currentResult);
+  renderPerformance(currentResult);
+});
+
+// ── Mock performance generator ──────────────────────────────────
+function seededRand(seed) {
+  seed = Math.abs(((seed * 1103515245) + 12345) | 0);
+  return (seed >>> 0) / 4294967296;
+}
+
+function generateMockPerformance(result) {
+  var s = 0;
+  for (var i = 0; i < result.campaignClean.length; i++) {
+    s = ((s << 5) - s + result.campaignClean.charCodeAt(i)) | 0;
+  }
+
+  // Total: 45–88% of goal
+  var totalPct = 0.45 + seededRand(s) * 0.43;
+  var totalClicks = Math.round(result.goal.target * totalPct);
+
+  // Per-channel weights
+  var channels = result.links.map(function(l) { return l.channel; });
+  var weights = channels.map(function(ch, idx) {
+    return 0.15 + seededRand(s + idx * 31 + 7) * 0.85;
+  });
+  var weightSum = weights.reduce(function(a, b) { return a + b; }, 0);
+
+  var remaining = totalClicks;
+  var channelData = channels.map(function(ch, idx) {
+    var clicks = idx === channels.length - 1
+      ? remaining
+      : Math.round(totalClicks * weights[idx] / weightSum);
+    remaining -= clicks;
+    return {
+      channel: ch,
+      clicks: clicks,
+      pct: Math.min(100, Math.round(clicks / result.goal.target * 100)),
+      share: totalClicks > 0 ? Math.round(clicks / totalClicks * 100) : 0,
+    };
+  });
+
+  // 7-day daily trend (sum roughly = last 7/14 of totalClicks)
+  var dailyBase = totalClicks / 14;
+  var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var trend = days.map(function(day, idx) {
+    return {
+      day: day,
+      clicks: Math.max(1, Math.round(dailyBase * (0.5 + seededRand(s + idx * 17 + 3) * 1.0))),
+    };
+  });
+
+  // Pace: assume campaign is ~halfway through its period
+  var onPace = totalPct >= 0.45;
+  var projectedFinal = Math.round(totalClicks / 0.6); // rough 60% through
+
+  return {
+    totalClicks: totalClicks,
+    goalTarget: result.goal.target,
+    pct: Math.min(100, Math.round(totalClicks / result.goal.target * 100)),
+    goalMet: totalClicks >= result.goal.target,
+    onPace: onPace,
+    projectedFinal: projectedFinal,
+    channels: channelData,
+    trend: trend,
+  };
+}
+
+// ── Render performance dashboard ────────────────────────────────
+function renderPerformance(result) {
+  var perf = generateMockPerformance(result);
+
+  // Status badge
+  var badge = document.getElementById('perf-status-badge');
+  if (perf.goalMet) {
+    badge.textContent = '✓ Goal Reached';
+    badge.className = 'ml-auto text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700';
+  } else if (perf.onPace) {
+    badge.textContent = '↑ On Pace';
+    badge.className = 'ml-auto text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700';
+  } else {
+    badge.textContent = '↓ Behind Pace';
+    badge.className = 'ml-auto text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-100 text-rose-700';
+  }
+
+  // Total progress
+  document.getElementById('perf-total-label').textContent =
+    perf.totalClicks.toLocaleString() + ' / ' + perf.goalTarget.toLocaleString() + ' clicks';
+  document.getElementById('perf-pct-label').textContent = perf.pct + '%';
+  document.getElementById('perf-total-bar').style.width = perf.pct + '%';
+  document.getElementById('perf-pace-label').textContent = perf.goalMet
+    ? 'Goal achieved!'
+    : 'Projected finish: ~' + perf.projectedFinal.toLocaleString() + ' clicks at current pace';
+
+  // Per-channel
+  var fillClass = {
+    email: 'progress-fill-email',
+    social: 'progress-fill-social',
+    paid: 'progress-fill-paid',
+    organic: 'progress-fill-organic',
+  };
+  document.getElementById('perf-channels').innerHTML = perf.channels.map(function(ch) {
+    var cls = fillClass[ch.channel] || 'progress-fill-default';
+    return '<div class="space-y-1">' +
+      '<div class="flex items-center justify-between text-sm">' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="channel-badge channel-' + ch.channel + '">' + ch.channel + '</span>' +
+          '<span class="text-slate-500 text-xs">' + ch.share + '% of total</span>' +
+        '</div>' +
+        '<span class="font-semibold text-slate-700">' + ch.clicks.toLocaleString() + ' clicks <span class="font-normal text-slate-400">(' + ch.pct + '% of goal)</span></span>' +
+      '</div>' +
+      '<div class="progress-track">' +
+        '<div class="progress-fill ' + cls + '" style="width:' + ch.pct + '%"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // 7-day trend chart
+  var maxClicks = Math.max.apply(null, perf.trend.map(function(d) { return d.clicks; }));
+  document.getElementById('perf-trend').innerHTML = perf.trend.map(function(d) {
+    var h = Math.round((d.clicks / maxClicks) * 100);
+    return '<div class="trend-bar" style="height:' + h + '%" title="' + d.day + ': ' + d.clicks + ' clicks"></div>';
+  }).join('');
+  document.getElementById('perf-trend-labels').innerHTML = perf.trend.map(function(d) {
+    return '<div class="trend-label" style="flex:1">' + d.day + '</div>';
+  }).join('');
+}
+
+// Render results
+function renderResults(result) {
+  summaryHeader.innerHTML =
+    '<div class="flex flex-wrap items-center gap-3">' +
+      '<span class="text-lg font-semibold text-slate-800">' + escapeHtml(result.campaignName) + '</span>' +
+      '<span class="font-mono text-sm bg-slate-100 text-slate-600 px-2 py-0.5 rounded">' + result.campaignClean + '</span>' +
+      '<span class="ml-auto bg-indigo-100 text-indigo-700 text-sm font-medium px-3 py-1 rounded-full">' +
+        'Goal: ' + escapeHtml(result.goal.label) + ' &rarr; ' + result.goal.target.toLocaleString() +
+      '</span>' +
+    '</div>';
+
+  linksContainer.innerHTML = result.links.map(function(link) {
+    const utmChips = Object.entries(link.utms).map(function(entry) {
+      return '<span class="utm-chip"><span class="text-slate-400">' +
+        entry[0].replace('utm_', '') + ':</span> ' + escapeHtml(entry[1]) + '</span>';
+    }).join('');
+
+    const tagChips = link.tags.map(function(tag) {
+      return '<span class="tag-chip">' + escapeHtml(tag) + '</span>';
+    }).join('');
+
+    return '<div class="border border-slate-200 rounded-xl overflow-hidden">' +
+      // Channel header
+      '<div class="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200">' +
+        '<span class="channel-badge channel-' + link.channel + '">' + link.channel + '</span>' +
+        '<span class="font-mono text-sm text-slate-700">' + link.linkName + '</span>' +
+        '<div class="ml-auto flex gap-2">' +
+          '<button onclick="copyText(\'' + escapeAttr(link.shortUrl) + '\', this)" class="copy-btn">Copy Short Link</button>' +
+          '<button onclick="copyText(\'' + escapeAttr(link.fullUrl) + '\', this)" class="copy-btn copy-btn-secondary">Copy Full URL</button>' +
+        '</div>' +
+      '</div>' +
+      // Details
+      '<div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">' +
+        '<div>' +
+          '<div class="flex items-center gap-2 mb-1">' +
+            '<p class="label-sm" style="margin-bottom:0">Short Link</p>' +
+            '<span class="text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0 rounded">Simulated</span>' +
+          '</div>' +
+          '<p class="font-mono text-sm text-slate-700 break-all">' + escapeHtml(link.shortUrl) + '</p>' +
+        '</div>' +
+        '<div>' +
+          '<p class="label-sm">Destination</p>' +
+          '<p class="font-mono text-xs text-slate-600 break-all">' + escapeHtml(link.destinationUrl) + '</p>' +
+        '</div>' +
+        '<div class="md:col-span-2">' +
+          '<p class="label-sm">Full URL (with UTMs)</p>' +
+          '<p class="font-mono text-xs text-slate-500 break-all">' + escapeHtml(link.fullUrl) + '</p>' +
+        '</div>' +
+        '<div>' +
+          '<p class="label-sm">UTM Parameters</p>' +
+          '<div class="flex flex-wrap gap-1 mt-1">' + utmChips + '</div>' +
+        '</div>' +
+        '<div>' +
+          '<p class="label-sm">Tags</p>' +
+          '<div class="flex flex-wrap gap-1 mt-1">' + tagChips + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  resultsSection.classList.remove('hidden');
+  resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Copy to clipboard
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(function() {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copy-btn-success');
+    setTimeout(function() {
+      btn.textContent = original;
+      btn.classList.remove('copy-btn-success');
+    }, 1800);
+  });
+}
+
+// Export JSON
+exportBtn.addEventListener('click', function() {
+  if (!currentResult) return;
+  const blob = new Blob([JSON.stringify(currentResult, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = currentResult.campaignClean + '-links.json';
+  a.click();
+});
+
+// Helpers
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escapeAttr(str) {
+  return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+</script>
+</body>
+</html>

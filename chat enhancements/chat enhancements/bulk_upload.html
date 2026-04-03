@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitly Assist – Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #EAEAEC;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* ─── Panel ─── */
+    .panel {
+      width: 400px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 20px rgba(0,0,0,.10), 0 0 0 1px rgba(0,0,0,.04);
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+      min-height: 560px;
+    }
+
+    /* ─── Header ─── */
+    .header {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid #F0F0F0;
+      gap: 6px;
+    }
+
+    .hdr-icon {
+      width: 30px; height: 30px;
+      background: none; border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      color: #888;
+      flex-shrink: 0;
+      transition: background .12s, color .12s;
+    }
+    .hdr-icon:hover { background: #F5F5F5; color: #333; }
+    .hdr-icon svg { display: block; }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex: 1;
+      margin-left: 2px;
+    }
+
+    .brand-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -.01em;
+    }
+
+    .beta-pill {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #fff;
+      background: #EE6123;
+      border-radius: 4px;
+      padding: 2px 5px;
+      line-height: 1;
+    }
+
+    .header-right {
+      display: flex; align-items: center; gap: 0;
+    }
+
+    /* ─── Body ─── */
+    .body {
+      flex: 1;
+      padding: 24px 20px 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+    }
+
+    /* ─── Heading ─── */
+    .heading {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.18;
+      letter-spacing: -.025em;
+      margin-bottom: 22px;
+    }
+    .c-teal   { color: #16B9AD; }
+    .c-blue   { color: #2C62E8; }
+    .c-orange { color: #EE6123; }
+
+    /* ─── Prompt card ─── */
+    .prompt-card {
+      border: 1px solid #E8E8E8;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .prompt-row {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 13px 14px;
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .prompt-row:not(:last-child) { border-bottom: 1px solid #F0F0F0; }
+    .prompt-row:hover  { background: #FAFAFA; }
+    .prompt-row:active { background: #F4F4F4; }
+
+    .prompt-row-icon {
+      width: 26px; height: 26px;
+      background: #F2F2F2;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: #666;
+    }
+
+    .prompt-row-text {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1A1A1A;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .prompt-row-chevron { color: #C8C8C8; flex-shrink: 0; }
+
+    /* ─── Response view ─── */
+    .response-view {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+      animation: fadeSlide .18s ease-out;
+    }
+    .response-view.show { display: flex; }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .back-row {
+      display: flex; align-items: center; gap: 5px;
+      background: none; border: none;
+      font-family: inherit; font-size: 12px; font-weight: 500;
+      color: #888; cursor: pointer; padding: 0 0 16px 0;
+      transition: color .1s;
+    }
+    .back-row:hover { color: #444; }
+
+    .resp-intro {
+      font-size: 14px;
+      font-weight: 600;
+      color: #111;
+      line-height: 1.45;
+      margin-bottom: 8px;
+    }
+
+    .resp-sub {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+    .resp-sub a { color: #2C62E8; text-decoration: none; }
+    .resp-sub a:hover { text-decoration: underline; }
+
+    .input-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 7px;
+    }
+
+    /* ─── URL input box ─── */
+    .url-box {
+      border: 1.5px solid #E0E0E0;
+      border-radius: 10px;
+      transition: border-color .15s;
+      position: relative;           /* anchor for the popover */
+    }
+    .url-box:focus-within { border-color: #2C62E8; }
+
+    .url-textarea {
+      width: 100%;
+      min-height: 88px;
+      max-height: 180px;
+      border: none; outline: none; resize: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      color: #1A1A1A;
+      line-height: 1.6;
+      padding: 11px 13px 6px;
+    }
+    .url-textarea::placeholder { color: #BABABA; }
+
+    .url-toolbar {
+      display: flex;
+      align-items: center;
+      padding: 6px 7px 7px;
+      gap: 6px;
+    }
+
+    /* "+" button */
+    .add-btn {
+      width: 28px; height: 28px;
+      border: 1.5px solid #DEDEDE;
+      background: #fff;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: #777;
+      font-size: 19px;
+      font-weight: 300;
+      line-height: 1;
+      transition: border-color .12s, color .12s, background .12s;
+      flex-shrink: 0;
+    }
+    .add-btn:hover  { border-color: #ABABAB; color: #333; }
+    .add-btn.open   { border-color: #2C62E8; color: #2C62E8; background: #EBF0FD; }
+
+    /* file pill */
+    .file-pill {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      background: #EBF0FD;
+      border: 1px solid #C5D5F7;
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: #2C62E8;
+      max-width: 150px;
+    }
+    .file-pill.show { display: flex; }
+    .file-pill-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-pill-x {
+      cursor: pointer; color: #7DA4EF; font-size: 14px;
+      line-height: 1; flex-shrink: 0; margin-left: 1px;
+    }
+    .file-pill-x:hover { color: #2C62E8; }
+
+    /* send button */
+    .send-btn {
+      margin-left: auto;
+      width: 28px; height: 28px;
+      background: #2C62E8;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+      transition: background .12s, opacity .12s;
+    }
+    .send-btn:hover    { background: #1D52CC; }
+    .send-btn:disabled { background: #BDD0F8; cursor: default; }
+
+    /* ─── Upload popover ─── */
+    .upload-popover {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      width: 270px;
+      background: #fff;
+      border: 1px solid #E8E8E8;
+      border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.11), 0 1px 4px rgba(0,0,0,.06);
+      overflow: hidden;
+      z-index: 200;
+      animation: pop .14s ease-out;
+    }
+    .upload-popover.show { display: block; }
+
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(5px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0)  scale(1); }
+    }
+
+    .pop-row {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 12px 13px;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: background .1s;
+    }
+    .pop-row:not(:last-child) { border-bottom: 1px solid #F2F2F2; }
+    .pop-row:hover { background: #FAFAFA; }
+
+    .pop-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .pop-icon.blue   { background: #EBF0FD; }
+    .pop-icon.orange { background: #FEF0E8; }
+
+    .pop-body { flex: 1; }
+    .pop-title { font-size: 13px; font-weight: 600; color: #111; }
+    .pop-desc  { font-size: 11.5px; color: #888; margin-top: 1px; line-height: 1.4; }
+
+    .pop-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #EE6123;
+      background: #FEF0E8;
+      border: 1px solid #F7C9A5;
+      border-radius: 5px;
+      padding: 2px 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ─── Success ─── */
+    .success-msg {
+      display: none;
+      background: #F0FAF7;
+      border: 1px solid #A8DEC9;
+      border-radius: 10px;
+      padding: 13px 15px;
+      font-size: 13.5px;
+      color: #14563A;
+      line-height: 1.55;
+      animation: fadeSlide .18s ease-out;
+    }
+    .success-msg.show { display: block; }
+
+    /* ─── Footer ─── */
+    .footer {
+      padding: 10px 20px 14px;
+      border-top: 1px solid #F0F0F0;
+      font-size: 11px;
+      color: #B0B0B0;
+      line-height: 1.55;
+      text-align: center;
+    }
+    .footer a { color: #999; text-decoration: underline; cursor: pointer; }
+    .footer a:hover { color: #555; }
+
+    /* ─── Overlay (click-away) ─── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100; display: none;
+    }
+    .overlay.show { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- Header -->
+  <div class="header">
+    <button class="hdr-icon" aria-label="Menu">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/></svg>
+    </button>
+
+    <div class="header-brand">
+      <span class="brand-name">Bitly Assist</span>
+      <span class="beta-pill">Beta</span>
+    </div>
+
+    <div class="header-right">
+      <button class="hdr-icon" aria-label="New">
+        <!-- sparkle -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3 L13.5 9 L19 10.5 L13.5 12 L12 18 L10.5 12 L5 10.5 L10.5 9 Z"/>
+        </svg>
+      </button>
+      <button class="hdr-icon" aria-label="Edit">
+        <!-- pencil -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+        </svg>
+      </button>
+      <button class="hdr-icon" aria-label="Close">
+        <!-- X -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- ── Home view ── -->
+    <div id="homeView">
+      <h1 class="heading">
+        <span class="c-teal">Create</span> <span class="c-blue">and analyze</span><br>
+        <span class="c-orange">your links</span>
+      </h1>
+
+      <div class="prompt-card">
+
+        <button class="prompt-row" onclick="pick('perf')">
+          <span class="prompt-row-icon">
+            <!-- bar chart -->
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6"  y1="20" x2="6"  y2="14"/></svg>
+          </span>
+          <span class="prompt-row-text">How are my links performing recently?</span>
+          <span class="prompt-row-chevron">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </button>
+
+        <button class="prompt-row" onclick="pick('suggest')">
+          <span class="prompt-row-icon">
+            <!-- lightbulb -->
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 6H8C6.5 13.5 5 11.5 5 9a7 7 0 0 1 7-7z"/></svg>
+          </span>
+          <span class="prompt-row-text">Based on the data, what should I do next?</span>
+          <span class="prompt-row-chevron">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </button>
+
+        <button class="prompt-row" onclick="pick('bulk')">
+          <span class="prompt-row-icon">
+            <!-- 2×2 grid -->
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </span>
+          <span class="prompt-row-text">Create multiple links or QR Codes</span>
+          <span class="prompt-row-chevron">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </button>
+
+      </div>
+    </div><!-- /homeView -->
+
+    <!-- ── Response view ── -->
+    <div class="response-view" id="respView">
+
+      <button class="back-row" onclick="goHome()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+
+      <!-- Bulk content -->
+      <div id="bulkContent">
+        <p class="resp-intro">Create multiple short links at once, start with one of the following:</p>
+        <p class="resp-sub">
+          Enter your destinations below (separated by line breaks or spaces), or upload a CSV file using our
+          <a href="#" onclick="return false">bulk creation template</a>.
+        </p>
+
+        <div class="input-label">Destination URLs (up to 100):</div>
+
+        <div class="url-box" id="urlBox">
+          <textarea
+            class="url-textarea"
+            id="urlInput"
+            placeholder="https://your-website.com/page-one&#10;https://your-website.com/page-two&#10;https://your-website.com/page-three"
+            oninput="onType(this)"
+          ></textarea>
+
+          <div class="url-toolbar">
+
+            <!-- + button -->
+            <button class="add-btn" id="addBtn" onclick="togglePop(event)" aria-label="Add file">+</button>
+
+            <!-- file pill -->
+            <div class="file-pill" id="filePill">
+              <span>📎</span>
+              <span class="file-pill-name" id="fileName">file.csv</span>
+              <span class="file-pill-x" onclick="removeFile()" title="Remove">×</span>
+            </div>
+
+            <!-- send -->
+            <button class="send-btn" id="sendBtn" onclick="submit()" disabled>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+
+            <!-- Upload popover (anchored inside url-box) -->
+            <div class="upload-popover" id="uploadPop">
+
+              <label class="pop-row" for="fileInput" onclick="closePop()">
+                <div class="pop-icon blue">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2C62E8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="pop-body">
+                  <div class="pop-title">Upload a file</div>
+                  <div class="pop-desc">CSV or XLSX with your URLs</div>
+                </div>
+              </label>
+
+              <a class="pop-row" href="#" onclick="downloadTemplate(event)">
+                <div class="pop-icon orange">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EE6123" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div class="pop-body">
+                  <div class="pop-title">Download template</div>
+                  <div class="pop-desc">See the required column format</div>
+                </div>
+                <span class="pop-tag">Required format</span>
+              </a>
+
+            </div><!-- /upload-popover -->
+          </div><!-- /url-toolbar -->
+        </div><!-- /url-box -->
+
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.tsv,.xls" style="display:none" onchange="onFile(this)" />
+      </div><!-- /bulkContent -->
+
+      <!-- generic non-bulk placeholder -->
+      <div id="genericContent" style="display:none">
+        <p class="resp-intro" id="genericText"></p>
+      </div>
+
+      <!-- success -->
+      <div class="success-msg" id="successMsg">
+        ✅ Your links are being created — check your dashboard shortly.
+      </div>
+
+    </div><!-- /respView -->
+
+  </div><!-- /body -->
+
+  <!-- Footer -->
+  <div class="footer">
+    This feature is in beta, some functionality may be limited.
+    <a>Leave feedback</a> to help shape what comes next.
+  </div>
+
+</div><!-- /panel -->
+
+<div class="overlay" id="overlay" onclick="closePop()"></div>
+
+<script>
+  function pick(key) {
+    document.getElementById('homeView').style.display = 'none';
+    document.getElementById('respView').classList.add('show');
+
+    if (key === 'bulk') {
+      document.getElementById('bulkContent').style.display = 'block';
+      document.getElementById('genericContent').style.display = 'none';
+      document.getElementById('successMsg').classList.remove('show');
+      document.getElementById('urlInput').focus();
+    } else {
+      document.getElementById('bulkContent').style.display = 'none';
+      document.getElementById('genericContent').style.display = 'block';
+      document.getElementById('genericText').textContent =
+        key === 'perf'
+          ? 'Here's a summary of your link performance over the last 30 days…'
+          : 'Based on your recent data, here are some next steps for your campaigns…';
+    }
+  }
+
+  function goHome() {
+    document.getElementById('homeView').style.display = 'block';
+    document.getElementById('respView').classList.remove('show');
+    document.getElementById('urlInput').value = '';
+    removeFile();
+    refreshSend();
+    closePop();
+  }
+
+  /* popover */
+  function togglePop(e) {
+    e.stopPropagation();
+    const pop = document.getElementById('uploadPop');
+    const btn = document.getElementById('addBtn');
+    if (pop.classList.contains('show')) {
+      closePop();
+    } else {
+      pop.classList.add('show');
+      document.getElementById('overlay').classList.add('show');
+      btn.classList.add('open');
+    }
+  }
+
+  function closePop() {
+    document.getElementById('uploadPop').classList.remove('show');
+    document.getElementById('overlay').classList.remove('show');
+    document.getElementById('addBtn').classList.remove('open');
+  }
+
+  /* template download */
+  function downloadTemplate(e) {
+    e.preventDefault();
+    closePop();
+    const csv = 'destination_url,custom_alias,title\nhttps://example.com/,,My link\n';
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'bitly-bulk-template.csv';
+    a.click();
+  }
+
+  /* file input */
+  function onFile(input) {
+    if (!input.files.length) return;
+    document.getElementById('fileName').textContent = input.files[0].name;
+    document.getElementById('filePill').classList.add('show');
+    input.value = '';
+    refreshSend();
+  }
+
+  function removeFile() {
+    document.getElementById('filePill').classList.remove('show');
+    refreshSend();
+  }
+
+  /* textarea */
+  function onType(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+    refreshSend();
+  }
+
+  function refreshSend() {
+    const hasText = document.getElementById('urlInput').value.trim().length > 0;
+    const hasFile = document.getElementById('filePill').classList.contains('show');
+    document.getElementById('sendBtn').disabled = !(hasText || hasFile);
+  }
+
+  function submit() {
+    document.getElementById('bulkContent').style.display = 'none';
+    document.getElementById('successMsg').classList.add('show');
+  }
+</script>
+</body>
+</html>

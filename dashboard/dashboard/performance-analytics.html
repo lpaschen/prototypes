@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance Analytics — Comparison Logic Prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1F72EE;--blue-lt:#EBF3FE;--blue-mid:#4A90E2;
+  --teal:#00B8D9;--teal-lt:#E0F7FA;
+  --green:#00875A;--green-lt:#E3FCEF;
+  --red:#DE350B;--red-lt:#FFEBE6;
+  --navy:#172B4D;--navy2:#253858;
+  --bg:#F4F5F7;--white:#FFFFFF;
+  --border:#DFE1E6;--border2:#EBECF0;
+  --t1:#172B4D;--t2:#5E6C84;--t3:#97A0AF;
+  --r:8px;
+  --shadow:0 1px 3px rgba(23,43,77,.12),0 0 0 1px rgba(23,43,77,.06);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5}
+
+/* ── TOP BAR ── */
+.topbar{background:var(--navy);height:52px;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:200}
+.topbar-logo{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.03em;white-space:nowrap}
+.topbar-logo span{color:var(--teal)}
+.topbar-nav{display:flex;gap:2px;flex:1}
+.tn-btn{padding:5px 13px;border:none;border-radius:6px;background:none;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;transition:.12s all}
+.tn-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.tn-btn.active{background:rgba(255,255,255,.15);color:#fff;font-weight:600}
+.topbar-controls{display:flex;align-items:center;gap:10px}
+.win-toggle{display:flex;background:rgba(255,255,255,.1);border-radius:7px;padding:3px;gap:1px}
+.win-btn{padding:4px 14px;border:none;border-radius:5px;background:none;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer;transition:.12s all;white-space:nowrap}
+.win-btn.active{background:rgba(255,255,255,.95);color:var(--navy)}
+.var-wrap{display:flex;align-items:center;gap:6px;border-left:1px solid rgba(255,255,255,.15);padding-left:12px}
+.var-label{font-size:11px;color:rgba(255,255,255,.45);white-space:nowrap}
+.var-select{font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 8px;background:rgba(255,255,255,.08);color:#fff;cursor:pointer}
+.var-select option{background:var(--navy);color:#fff}
+
+/* ── LAYOUT ── */
+.main{max-width:1100px;margin:0 auto;padding:20px 20px 40px}
+.view{display:none}.view.active{display:block}
+
+/* ── CONTEXT BANNER ── */
+.ctx{background:#fff;border:1.5px solid #C1D5FC;border-radius:7px;padding:9px 14px;font-size:12px;font-weight:500;color:var(--blue);margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctx-icon{font-size:14px}
+.ctx-sep{color:var(--t3);margin:0 4px}
+
+/* ── PAGE HEADER ── */
+.pg-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.pg-title{font-size:22px;font-weight:800;color:var(--t1);letter-spacing:-.02em}
+.pg-title-sub{font-size:13px;color:var(--t2);margin-top:3px}
+.pg-actions{display:flex;gap:8px;align-items:center}
+.btn-outline{padding:7px 14px;border:1.5px solid var(--border);border-radius:7px;background:#fff;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;transition:.12s}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-primary{padding:7px 14px;border:none;border-radius:7px;background:var(--blue);font-size:13px;font-weight:600;color:#fff;cursor:pointer;transition:.12s}
+.btn-primary:hover{background:#1565D8}
+
+/* ── DATE CHIP ── */
+.date-chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--border);border-radius:7px;padding:6px 12px;background:#fff;font-size:13px;font-weight:600;color:var(--t1);cursor:pointer}
+.date-chip-icon{color:var(--t3);font-size:12px}
+
+/* ── CARD ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow)}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:16px 18px;cursor:pointer;transition:.15s all;position:relative}
+.kpi-card:hover{border-color:var(--blue);box-shadow:0 4px 14px rgba(31,114,238,.12);transform:translateY(-1px)}
+.kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);margin-bottom:8px}
+.kpi-value{font-size:28px;font-weight:800;letter-spacing:-.025em;color:var(--t1);margin-bottom:8px;line-height:1}
+.kpi-delta-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.delta{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.delta.up{color:var(--green);background:var(--green-lt)}
+.delta.down{color:var(--red);background:var(--red-lt)}
+/* Variation-controlled context */
+.kpi-ctx-A,.kpi-ctx-B{font-size:11px;color:var(--t3);margin-top:5px;display:none}
+body.varA .kpi-ctx-A{display:block}
+body.varB .kpi-ctx-B{display:block}
+.kpi-hint{position:absolute;top:9px;right:10px;font-size:10px;color:var(--t3);background:var(--bg);padding:2px 6px;border-radius:4px;opacity:0;transition:.15s}
+.kpi-card:hover .kpi-hint{opacity:1}
+
+/* ── 2-COL GRID ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.two-col-wide{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+.chart-wrap{position:relative;height:200px}
+
+/* ── CARD HEADER ── */
+.card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.card-title{font-size:14px;font-weight:700;color:var(--t1)}
+.card-actions{display:flex;gap:6px;align-items:center}
+.icon-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:13px;color:var(--t2)}
+.icon-btn:hover{background:var(--bg);color:var(--t1)}
+
+/* ── CHART LEGEND ── */
+.chart-legend{display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.cl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);font-weight:500}
+.cl-swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0}
+.cl-current{background:var(--blue)}
+.cl-compare{background:#C1D5FC;border:1px dashed #93B8F8}
+
+/* ── TABLE ── */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);padding:8px 10px;border-bottom:1.5px solid var(--border);text-align:left}
+.data-table th.right,.data-table td.right{text-align:right}
+.data-table td{padding:9px 10px;border-bottom:1px solid var(--border2);font-size:13px;color:var(--t1)}
+.data-table tr:last-child td{border-bottom:none}
+.link-cell{color:var(--blue);font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.link-cell:hover{text-decoration:underline}
+.tbl-delta{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 6px;border-radius:12px}
+.tbl-delta.up{color:var(--green);background:var(--green-lt)}
+.tbl-delta.down{color:var(--red);background:var(--red-lt)}
+.tbl-bar-wrap{display:flex;align-items:center;gap:6px;min-width:80px}
+.tbl-bar{height:6px;border-radius:3px;background:var(--blue);min-width:2px}
+
+/* ── DONUT LEGEND ── */
+.donut-legend{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.dl-item{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.dl-left{display:flex;align-items:center;gap:7px}
+.dl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dl-label{color:var(--t2)}
+.dl-val{font-weight:700;color:var(--t1)}
+
+/* ══════════════════════════════════════
+   INSIGHTS VIEW
+══════════════════════════════════════ */
+.insights-list{display:flex;flex-direction:column;gap:12px}
+.ic{background:#fff;border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden}
+.ic-header{display:flex;align-items:flex-start;gap:12px;padding:18px 20px;cursor:pointer;user-select:none}
+.ic-icon-wrap{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ic-icon-wrap.up{background:var(--green-lt)}.ic-icon-wrap.down{background:var(--red-lt)}.ic-icon-wrap.info{background:var(--blue-lt)}
+.ic-title-wrap{flex:1}
+.ic-title{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:3px}
+.ic-window-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);background:var(--blue-lt);padding:2px 7px;border-radius:12px}
+.ic-chevron{color:var(--t3);font-size:12px;margin-top:4px;transition:.15s}
+.ic.open .ic-chevron{transform:rotate(180deg)}
+.ic-body{display:none;padding:0 20px 18px 68px}
+.ic.open .ic-body{display:block}
+.ic-body-text{font-size:14px;color:var(--t2);line-height:1.65;margin-bottom:14px}
+.ic-body-text strong{color:var(--t1)}.hl-up{color:var(--green);font-weight:700}.hl-down{color:var(--red);font-weight:700}
+.ic-rec{background:var(--bg);border-radius:7px;padding:12px 14px;margin-bottom:12px}
+.ic-rec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:4px}
+.ic-rec-text{font-size:13px;color:var(--t2)}
+.ic-stats-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px}
+.ic-stat{display:flex;flex-direction:column;gap:2px}
+.ic-stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3)}
+.ic-stat-value{font-size:15px;font-weight:800;color:var(--t1)}
+.ic-stat-period{font-size:10px;color:var(--t3)}
+.ic-action{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--blue);border:none;background:none;cursor:pointer;padding:0;margin-top:4px}
+.ic-action:hover{text-decoration:underline}
+.ic-divider{border:none;border-top:1px solid var(--border2);margin:12px 0}
+
+/* ══════════════════════════════════════
+   DETAIL VIEW
+══════════════════════════════════════ */
+.back-btn{display:inline-flex;align-items:center;gap:6px;border:none;background:none;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;padding:0;margin-bottom:16px}
+.back-btn:hover{color:var(--blue)}
+.detail-link-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px}
+.dlc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.dlc-title{font-size:17px;font-weight:800;color:var(--t1)}
+.dlc-url{font-size:12px;color:var(--blue);font-weight:500;margin-top:3px}
+.dlc-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;background:var(--bg);color:var(--t2);border:1px solid var(--border)}
+.dlc-kpis{display:flex;gap:24px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border2);margin-top:12px;align-items:baseline}
+.dlc-kpi{display:flex;flex-direction:column;gap:3px}
+.dlc-kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)}
+.dlc-kpi-value{font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--t1)}
+.dlc-kpi-delta{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;padding:4px 10px;border-radius:7px}
+.dlc-kpi-delta.up{color:var(--green);background:var(--green-lt)}
+.dlc-kpi-delta.down{color:var(--red);background:var(--red-lt)}
+.dlc-comparison-note{font-size:12px;color:var(--t2);margin-top:8px;font-weight:500}
+.dlc-comparison-note strong{color:var(--t1)}
+.period-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.pc-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:14px 18px}
+.pc-card.is-current{border-color:var(--blue);background:var(--blue-lt)}
+.pc-period-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.pc-card.is-current .pc-period-badge{color:var(--blue)}
+.pc-card:not(.is-current) .pc-period-badge{color:var(--t3)}
+.pc-date{font-size:11px;color:var(--t2);margin-bottom:8px;font-weight:500}
+.pc-value{font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--t1)}
+.pc-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.detail-chart-wrap{height:220px;position:relative}
+
+/* ── VARIATION CALLOUT ── */
+.variation-strip{position:fixed;bottom:0;left:0;right:0;background:var(--navy);border-top:3px solid var(--teal);padding:8px 20px;display:flex;align-items:center;gap:12px;z-index:300}
+.vs-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.5)}
+.vs-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
+.vs-pill.active{background:var(--teal);color:var(--navy)}
+.vs-pill.inactive{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
+.vs-arrow{font-size:11px;color:rgba(255,255,255,.3)}
+.vs-description{font-size:11px;color:rgba(255,255,255,.55);margin-left:8px}
+.proto-badge{margin-left:auto;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.3)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:760px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.two-col,.two-col-wide{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="varA">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">bit<span>.</span>ly <span style="font-size:11px;font-weight:500;opacity:.5;letter-spacing:0">analytics</span></div>
+  <nav class="topbar-nav">
+    <button class="tn-btn active" id="nav-overview" onclick="nav('overview')">Overview</button>
+    <button class="tn-btn" id="nav-insights" onclick="nav('insights')">Insights</button>
+    <button class="tn-btn" id="nav-detail" onclick="nav('detail')" style="display:none" id="nav-detail">
+      <span id="nav-detail-label">Link Detail</span>
+    </button>
+  </nav>
+  <div class="topbar-controls">
+    <div class="win-toggle">
+      <button class="win-btn active" id="wb7" onclick="setWin('7d')">7 days</button>
+      <button class="win-btn" id="wb30" onclick="setWin('30d')">30 days</button>
+    </div>
+    <div class="var-wrap">
+      <span class="var-label">Delta style</span>
+      <select class="var-select" onchange="setVar(this.value)">
+        <option value="A">A — Compact</option>
+        <option value="B">B — Explicit</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ══════════ OVERVIEW ══════════ -->
+  <div class="view active" id="view-overview">
+    <div class="pg-head">
+      <div>
+        <div class="pg-title">Analytics</div>
+        <div class="pg-title-sub">Showing data for all links and QR Codes</div>
+      </div>
+      <div class="pg-actions">
+        <span class="date-chip" id="ov-date-chip"><span class="date-chip-icon">📅</span><span id="ov-date-chip-text">Jan 26, 2026 → Feb 24, 2026</span></span>
+        <button class="btn-outline">⬇ Download PDF</button>
+        <button class="btn-primary">⊕ Add module</button>
+      </div>
+    </div>
+
+    <div class="ctx" id="ov-ctx">
+      <span class="ctx-icon">📊</span>
+      Comparing <strong id="ov-curr-range">Jan 26–Feb 24, 2026</strong>
+      <span class="ctx-sep">vs</span>
+      <strong id="ov-comp-range">Dec 27–Jan 25, 2026</strong>
+      <span class="ctx-sep">·</span>
+      <span id="ov-win-label">previous 30 days</span>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Charts row -->
+    <div class="two-col-wide">
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-title">Total Engagements over time</div>
+          <div class="card-actions">
+            <div class="chart-legend" style="margin-bottom:0">
+              <div class="cl-item"><div class="cl-swatch cl-current"></div><span id="ov-chart-leg-curr">Jan 26–Feb 24</span></div>
+              <div class="cl-item"><div class="cl-swatch cl-compare"></div><span id="ov-chart-leg-comp">Dec 27–Jan 25</span></div>
+            </div>
+            <div class="icon-btn">⬇</div>
+            <div class="icon-btn">···</div>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="ov-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">By Referrer</div></div>
+        <div style="display:flex;align-items:center;justify-content:center;height:140px">
+          <canvas id="donut-chart" style="max-height:140px;max-width:140px"></canvas>
+        </div>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+
+    <!-- Table row -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-title">Top performing links</div>
+          <div class="card-actions"><div class="icon-btn">⬇</div><div class="icon-btn">···</div></div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Link</th><th class="right">Engagements</th><th class="right">%</th><th class="right">vs prior period</th></tr></thead>
+          <tbody id="links-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-title">By Location</div>
+          <div class="card-actions"><div class="icon-btn">⬇</div></div>
+        </div>
+        <table class="data-table" id="location-table">
+          <thead><tr><th>#</th><th>Country</th><th class="right">Engagements</th><th class="right">%</th></tr></thead>
+          <tbody id="locations-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ INSIGHTS ══════════ -->
+  <div class="view" id="view-insights">
+    <div class="pg-head">
+      <div>
+        <div class="pg-title">Insights</div>
+        <div class="pg-title-sub" id="ins-subtitle">Jan 25–31, 2026</div>
+      </div>
+      <div class="pg-actions"><div class="icon-btn">⬇</div></div>
+    </div>
+    <div class="ctx" id="ins-ctx">
+      <span class="ctx-icon">📊</span>
+      Comparing <strong id="ins-curr-range">Feb 17–23, 2026</strong>
+      <span class="ctx-sep">vs</span>
+      <strong id="ins-comp-range">Feb 10–16, 2026</strong>
+      <span class="ctx-sep">·</span>
+      <span id="ins-win-label">previous 7 days</span>
+    </div>
+    <div class="insights-list" id="insights-list"></div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-hd">
+        <div class="card-title" id="ins-chart-title">Weekly performance</div>
+        <div class="chart-legend">
+          <div class="cl-item"><div class="cl-swatch cl-current"></div><span id="ins-leg-curr">Feb 17–23 (current)</span></div>
+          <div class="cl-item"><div class="cl-swatch cl-compare"></div><span id="ins-leg-comp">Feb 10–16 (comparison)</span></div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="ins-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══════════ DETAIL ══════════ -->
+  <div class="view" id="view-detail">
+    <button class="back-btn" onclick="nav('overview')">← Back to Overview</button>
+
+    <div class="ctx" id="det-ctx">
+      <span class="ctx-icon">🔍</span>
+      Diagnostic view — comparing <strong id="det-curr-range">Feb 17–23, 2026</strong>
+      <span class="ctx-sep">vs</span>
+      <strong id="det-comp-range">Feb 10–16, 2026</strong>
+      <span class="ctx-sep">·</span>
+      <span id="det-win-label">previous 7 days</span>
+    </div>
+
+    <div class="detail-link-card">
+      <div class="dlc-top">
+        <div>
+          <div class="dlc-title" id="det-link-title">Job Application for Product Manager</div>
+          <div class="dlc-url" id="det-link-url">bit.ly/job-pm-apply</div>
+          <div class="dlc-tags"><span class="tag">Recruiting</span><span class="tag">Product</span><span class="tag">Standard tag</span></div>
+        </div>
+      </div>
+      <div class="dlc-kpis">
+        <div class="dlc-kpi">
+          <div class="dlc-kpi-label">Total Engagements</div>
+          <div class="dlc-kpi-value" id="det-total">427</div>
+        </div>
+        <div class="dlc-kpi">
+          <div class="dlc-kpi-label">Current Period</div>
+          <div class="dlc-kpi-value" id="det-current-val">427</div>
+          <div style="font-size:11px;color:var(--t3)" id="det-curr-period-label">Feb 17–23, 2026</div>
+        </div>
+        <div class="dlc-kpi">
+          <div class="dlc-kpi-label">Change</div>
+          <div class="dlc-kpi-delta up" id="det-delta-badge">↑ 27%</div>
+        </div>
+        <div class="dlc-kpi">
+          <div class="dlc-kpi-label">Prior Period</div>
+          <div class="dlc-kpi-value" id="det-prior-val">337</div>
+          <div style="font-size:11px;color:var(--t3)" id="det-comp-period-label">Feb 10–16, 2026</div>
+        </div>
+      </div>
+      <div class="dlc-comparison-note" id="det-comp-note">
+        Compared to <strong id="det-comp-strong">Feb 10–16, 2026</strong> — <span id="det-comp-window">previous 7 days</span>
+      </div>
+    </div>
+
+    <div class="period-cards">
+      <div class="pc-card is-current">
+        <div class="pc-period-badge">Current Period</div>
+        <div class="pc-date" id="det-pc-curr-date">Feb 17–23, 2026</div>
+        <div class="pc-value" id="det-pc-curr-val">427</div>
+        <div class="pc-sub">Total engagements</div>
+      </div>
+      <div class="pc-card">
+        <div class="pc-period-badge">Comparison Period</div>
+        <div class="pc-date" id="det-pc-comp-date">Feb 10–16, 2026</div>
+        <div class="pc-value" id="det-pc-comp-val">337</div>
+        <div class="pc-sub">Total engagements</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hd">
+        <div class="card-title" id="det-chart-title">Daily engagements — current vs comparison</div>
+        <div class="chart-legend">
+          <div class="cl-item"><div class="cl-swatch cl-current"></div><span id="det-leg-curr">Feb 17–23, 2026 (current)</span></div>
+          <div class="cl-item"><div class="cl-swatch cl-compare"></div><span id="det-leg-comp">Feb 10–16, 2026 (comparison)</span></div>
+        </div>
+      </div>
+      <div class="detail-chart-wrap"><canvas id="det-chart"></canvas></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-hd"><div class="card-title">By Referrer</div><div class="card-actions"><div class="icon-btn">⬇</div></div></div>
+        <div style="display:flex;align-items:center;justify-content:center;height:130px">
+          <canvas id="det-donut" style="max-height:130px;max-width:130px"></canvas>
+        </div>
+        <div class="donut-legend" id="det-donut-legend"></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">By Location</div><div class="card-actions"><div class="icon-btn">⬇</div></div></div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Country</th><th class="right">Engagements</th><th class="right">%</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>United States</td><td class="right">376</td><td class="right">88.1%</td></tr>
+            <tr><td>2</td><td>Canada</td><td class="right">27</td><td class="right">6.3%</td></tr>
+            <tr><td>3</td><td>United Kingdom</td><td class="right">14</td><td class="right">3.3%</td></tr>
+            <tr><td>4</td><td>Australia</td><td class="right">10</td><td class="right">2.3%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div><!-- /main -->
+
+<!-- VARIATION STRIP -->
+<div class="variation-strip">
+  <span class="vs-label">Prototype</span>
+  <span class="vs-pill active" id="vs-a-pill">A — Compact delta</span>
+  <span class="vs-arrow">↔</span>
+  <span class="vs-pill inactive" id="vs-b-pill">B — Explicit delta</span>
+  <span class="vs-description" id="vs-desc">Dashboard shows compact comparison context. Toggle to B for verbose framing.</span>
+  <span class="proto-badge">Comparison Logic Prototype v1</span>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════
+const W = {
+  '7d': {
+    currentRange:'Feb 17–23, 2026', compRange:'Feb 10–16, 2026',
+    windowLabel:'previous 7 days', windowShort:'prev 7d',
+    dateChip:'Feb 17, 2026 → Feb 23, 2026',
+    insSubtitle:'Feb 17–23, 2026',
+    chartLabels:['Feb 17','Feb 18','Feb 19','Feb 20','Feb 21','Feb 22','Feb 23'],
+    chartType:'Daily',
+  },
+  '30d': {
+    currentRange:'Jan 26–Feb 24, 2026', compRange:'Dec 27–Jan 25, 2026',
+    windowLabel:'previous 30 days', windowShort:'prev 30d',
+    dateChip:'Jan 26, 2026 → Feb 24, 2026',
+    insSubtitle:'Jan 26–Feb 24, 2026',
+    chartLabels:['Jan 26–Feb 1','Feb 2–8','Feb 9–15','Feb 16–22','Feb 23–24'],
+    chartType:'Weekly period',
+  }
+};
+
+const KPI = {
+  totalEng: {
+    label:'Total Engagements', emoji:'📊',
+    '7d':{ val:'1,247', delta:13, dir:'up', prev:'1,104',
+      chart:{ curr:[162,148,198,221,178,189,151], comp:[128,131,172,195,161,178,139] }},
+    '30d':{ val:'4,890', delta:11, dir:'up', prev:'4,412',
+      chart:{ curr:[1010,1120,1180,1310,270], comp:[905,1010,1060,1200,237] }},
+  },
+  linkClicks: {
+    label:'Link Clicks', emoji:'🔗',
+    '7d':{ val:'892', delta:12, dir:'up', prev:'798',
+      chart:{ curr:[115,108,145,162,131,138,93], comp:[98,94,128,144,118,125,91] }},
+    '30d':{ val:'3,542', delta:11, dir:'up', prev:'3,186',
+      chart:{ curr:[730,810,865,960,177], comp:[655,730,780,870,151] }},
+  },
+  qrScans: {
+    label:'QR Code Scans', emoji:'⬛',
+    '7d':{ val:'247', delta:16, dir:'up', prev:'213',
+      chart:{ curr:[33,28,38,43,35,37,33], comp:[28,25,32,37,29,32,30] }},
+    '30d':{ val:'892', delta:9, dir:'up', prev:'821',
+      chart:{ curr:[188,202,218,240,44], comp:[170,185,198,220,48] }},
+  },
+  convRate: {
+    label:'Conversion Rate', emoji:'🎯',
+    '7d':{ val:'3.8%', delta:12, dir:'up', prev:'3.4%',
+      chart:{ curr:[3.2,3.5,3.9,4.1,3.7,3.8,4.2], comp:[2.9,3.1,3.4,3.5,3.2,3.6,3.5] }},
+    '30d':{ val:'3.5%', delta:9, dir:'up', prev:'3.2%',
+      chart:{ curr:[3.2,3.4,3.6,3.8,3.5], comp:[2.9,3.0,3.2,3.4,3.1] }},
+  }
+};
+
+const LINKS = [
+  { title:'Job Application for Product Man…', slug:'job-pm-apply', '7d':{ eng:427, pct:34.2, delta:27, dir:'up' }, '30d':{ eng:1680, pct:34.4, delta:19, dir:'up' } },
+  { title:'Benchmarking product brief', slug:'bench-brief', '7d':{ eng:312, pct:25.0, delta:8, dir:'up' }, '30d':{ eng:1220, pct:24.9, delta:6, dir:'up' } },
+  { title:'Proposed AI Stance in Product', slug:'ai-stance', '7d':{ eng:198, pct:15.9, delta:-4, dir:'down' }, '30d':{ eng:780, pct:15.9, delta:2, dir:'up' } },
+  { title:'2026 Company vision & strategy', slug:'vision-26', '7d':{ eng:156, pct:12.5, delta:5, dir:'up' }, '30d':{ eng:605, pct:12.4, delta:3, dir:'up' } },
+  { title:'Referral expansion brief', slug:'referral', '7d':{ eng:154, pct:12.3, delta:11, dir:'up' }, '30d':{ eng:605, pct:12.4, delta:8, dir:'up' } },
+];
+
+const LOCATIONS = [
+  { country:'United States', '7d':{ eng:1100, pct:88.2 }, '30d':{ eng:4312, pct:88.2 } },
+  { country:'Canada', '7d':{ eng:62, pct:5.0 }, '30d':{ eng:244, pct:5.0 } },
+  { country:'United Kingdom', '7d':{ eng:50, pct:4.0 }, '30d':{ eng:196, pct:4.0 } },
+  { country:'India', '7d':{ eng:35, pct:2.8 }, '30d':{ eng:138, pct:2.8 } },
+];
+
+const REFERRERS = {
+  '7d':  [{ name:'Direct', val:522, color:'#0EA5E9' },{ name:'LinkedIn', val:428, color:'#0284C7' },{ name:'Google', val:184, color:'#7DD3FC' },{ name:'Twitter/X', val:113, color:'#BAE6FD' }],
+  '30d': [{ name:'Direct', val:2010, color:'#0EA5E9' },{ name:'LinkedIn', val:1680, color:'#0284C7' },{ name:'Google', val:734, color:'#7DD3FC' },{ name:'Twitter/X', val:466, color:'#BAE6FD' }],
+};
+
+const INSIGHTS = {
+  '7d': [
+    {
+      dir:'up', icon:'🏆',
+      title:'Total engagement is up 13% this week',
+      tag:'7-Day Window',
+      body: w=>`Your <strong>total engagements increased <span class="hl-up">13%</span></strong> compared to the previous 7 days (Feb 10–16, 2026). Both link clicks (+12%) and QR scans (+16%) grew. Your top link alone drove 34% of all engagements this week.`,
+      rec:'Keep sharing your top links while momentum is high. Consider scheduling a repost mid-week when Thursday–Friday peaks are highest.',
+      stats:[{l:'This week',v:'1,247',p:'Feb 17–23'},{l:'Last week',v:'1,104',p:'Feb 10–16'},{l:'Change',v:'+143',p:''}],
+      action:'View engagement detail', metric:'totalEng',
+    },
+    {
+      dir:'up', icon:'📈',
+      title:'Job Application link surged 27% vs previous 7 days',
+      tag:'7-Day Window',
+      body: w=>`Your link <strong>bit.ly/job-pm-apply</strong> had <span class="hl-up">27% more engagements</span> compared to the previous 7 days (Feb 10–16, 2026). LinkedIn referrals drove 62% of the increase. This is the highest 7-day total for this link.`,
+      rec:'The LinkedIn audience is resonating with this content. Consider boosting with a sponsored post this week.',
+      stats:[{l:'This week',v:'427',p:'Feb 17–23'},{l:'Last week',v:'337',p:'Feb 10–16'},{l:'From LinkedIn',v:'+41',p:'of the increase'}],
+      action:'View link detail', metric:'totalEng',
+    },
+    {
+      dir:'info', icon:'📍',
+      title:'QR Code activity is trending up',
+      tag:'7-Day Window',
+      body: w=>`<strong>QR Code scans increased <span class="hl-up">16%</span></strong> compared to the previous 7 days. This follows two consecutive weeks of QR growth. Mobile scanning (+12%) and desktop scanning (+31%) both improved vs Feb 10–16.`,
+      rec:'Consider placing QR codes on physical materials — the upward trend suggests your audience is engaging with offline touchpoints.',
+      stats:[{l:'This week',v:'247',p:'Feb 17–23'},{l:'Last week',v:'213',p:'Feb 10–16'},{l:'Change',v:'+34 scans',p:''}],
+      action:'View QR detail', metric:'qrScans',
+    },
+  ],
+  '30d': [
+    {
+      dir:'up', icon:'🏆',
+      title:'Sustained 11% engagement growth over 30 days',
+      tag:'30-Day Window',
+      body: w=>`Your <strong>total engagements increased <span class="hl-up">11%</span></strong> compared to the previous 30 days (Dec 27–Jan 25, 2026), reaching <strong>4,890</strong>. This consistent growth across all four weeks suggests structural improvement, not short-term variance.`,
+      rec:'The 30-day trend is positive and durable. Focus on maintaining content cadence rather than sudden volume changes.',
+      stats:[{l:'This period',v:'4,890',p:'Jan 26–Feb 24'},{l:'Prior period',v:'4,412',p:'Dec 27–Jan 25'},{l:'Change',v:'+478',p:'engagements'}],
+      action:'View engagement detail', metric:'totalEng',
+    },
+    {
+      dir:'up', icon:'📊',
+      title:'Product content dominates for the 2nd straight month',
+      tag:'30-Day Window',
+      body: w=>`Your <strong>top 3 links are all product-related</strong>, collectively driving <span class="hl-up">75% of total engagements</span> compared to 68% in the previous 30 days (Dec 27–Jan 25). This audience concentration is strengthening.`,
+      rec:'Double down on product-focused content. Your audience is self-selecting toward this category.',
+      stats:[{l:'This period',v:'75%',p:'product share'},{l:'Prior period',v:'68%',p:'Dec 27–Jan 25'},{l:'Change',v:'+7pp',p:'share shift'}],
+      action:'View top links', metric:'linkClicks',
+    },
+    {
+      dir:'up', icon:'💡',
+      title:'LinkedIn referral quality improved over 30 days',
+      tag:'30-Day Window',
+      body: w=>`<strong>LinkedIn now drives 34% of total engagements</strong>, up from 29% in the previous 30 days. Click-to-engagement rate from LinkedIn improved <span class="hl-up">17%</span> compared to Dec 27–Jan 25, 2026 — indicating higher content-audience fit.`,
+      rec:'LinkedIn is your highest-quality referral source. Ensure your link previews and descriptions are optimized for the LinkedIn feed.',
+      stats:[{l:'This period',v:'34%',p:'LinkedIn share'},{l:'Prior period',v:'29%',p:'Dec 27–Jan 25'},{l:'CTR change',v:'+17%',p:''}],
+      action:'View referrer breakdown', metric:'totalEng',
+    },
+  ]
+};
+
+// ═══════════════════════════════════
+// STATE & CHARTS
+// ═══════════════════════════════════
+let WIN = '30d';
+let VAR = 'A';
+let SELECTED_LINK = LINKS[0];
+let charts = {};
+
+// ═══════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════
+function nav(view, link) {
+  if (link) SELECTED_LINK = link;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tn-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.getElementById('nav-'+view).classList.add('active');
+
+  const detBtn = document.getElementById('nav-detail');
+  if (view === 'detail') {
+    detBtn.style.display='inline-block';
+    document.getElementById('nav-detail-label').textContent = 'Detail: '+SELECTED_LINK.title.slice(0,22)+'…';
+    renderDetail();
+  }
+  updateCtxBanners();
+}
+
+// ═══════════════════════════════════
+// WINDOW TOGGLE
+// ═══════════════════════════════════
+function setWin(w) {
+  WIN = w;
+  document.getElementById('wb7').classList.toggle('active', w==='7d');
+  document.getElementById('wb30').classList.toggle('active', w==='30d');
+  updateCtxBanners();
+  renderKPIs();
+  renderLinks();
+  renderLocations();
+  renderInsights();
+  updateOvChart();
+  updateInsChart();
+  renderDetail();
+}
+
+// ═══════════════════════════════════
+// VARIATION TOGGLE
+// ═══════════════════════════════════
+function setVar(v) {
+  VAR = v;
+  document.body.classList.remove('varA','varB');
+  document.body.classList.add('var'+v);
+  // Update strip
+  document.getElementById('vs-a-pill').className = 'vs-pill '+(v==='A'?'active':'inactive');
+  document.getElementById('vs-b-pill').className = 'vs-pill '+(v==='B'?'active':'inactive');
+  document.getElementById('vs-desc').textContent = v==='A'
+    ? 'Dashboard shows compact comparison context. Toggle to B for verbose framing.'
+    : 'Dashboard shows explicit date-anchored comparison. Toggle to A for compact framing.';
+  renderKPIs();
+}
+
+// ═══════════════════════════════════
+// CONTEXT BANNERS
+// ═══════════════════════════════════
+function updateCtxBanners() {
+  const w = W[WIN];
+  [
+    ['ov-curr-range','ov-comp-range','ov-win-label','ov-date-chip-text'],
+    ['ins-curr-range','ins-comp-range','ins-win-label'],
+    ['det-curr-range','det-comp-range','det-win-label'],
+  ].forEach(ids=>{
+    if(document.getElementById(ids[0])) document.getElementById(ids[0]).textContent = w.currentRange;
+    if(document.getElementById(ids[1])) document.getElementById(ids[1]).textContent = w.compRange;
+    if(document.getElementById(ids[2])) document.getElementById(ids[2]).textContent = w.windowLabel;
+  });
+  if(document.getElementById('ov-date-chip-text')) document.getElementById('ov-date-chip-text').textContent = w.dateChip;
+  if(document.getElementById('ins-subtitle')) document.getElementById('ins-subtitle').textContent = w.insSubtitle;
+}
+
+// ═══════════════════════════════════
+// RENDER KPI CARDS
+// ═══════════════════════════════════
+function renderKPIs() {
+  const grid = document.getElementById('kpi-grid');
+  const w = W[WIN];
+  grid.innerHTML='';
+  Object.entries(KPI).forEach(([key,m])=>{
+    const d = m[WIN];
+    const isUp = d.dir==='up';
+    const dc = isUp?'up':'down';
+    const ar = isUp?'↑':'↓';
+    const sign = isUp?'+':'';
+
+    const ctxA = `vs ${w.windowShort}`;
+    const ctxB = `Compared to ${w.windowLabel} (${w.compRange})`;
+
+    const card = document.createElement('div');
+    card.className='kpi-card';
+    card.onclick = ()=>nav('detail',LINKS[0]);
+    card.innerHTML=`
+      <div class="kpi-label">${m.label}</div>
+      <div class="kpi-value">${d.val}</div>
+      <div class="kpi-delta-row">
+        <span class="delta ${dc}">${ar} ${sign}${Math.abs(d.delta)}%</span>
+      </div>
+      <div class="kpi-ctx-A kpi-ctx">${ctxA}</div>
+      <div class="kpi-ctx-B kpi-ctx">${ctxB}</div>
+      <span class="kpi-hint">View detail →</span>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════
+// RENDER LINKS TABLE
+// ═══════════════════════════════════
+function renderLinks() {
+  const tbody = document.getElementById('links-tbody');
+  const maxEng = Math.max(...LINKS.map(l=>l[WIN].eng));
+  tbody.innerHTML='';
+  LINKS.forEach((l,i)=>{
+    const d = l[WIN];
+    const isUp = d.dir==='up';
+    const barW = Math.round((d.eng/maxEng)*80);
+    const dc = isUp?'up':'down';
+    const ar = isUp?'↑':'↓';
+    const sign = isUp?'+':'';
+    const tr = document.createElement('tr');
+    tr.innerHTML=`
+      <td>${i+1}</td>
+      <td><span class="link-cell" onclick="nav('detail',LINKS[${i}])">${l.title}</span></td>
+      <td class="right">
+        <div class="tbl-bar-wrap" style="justify-content:flex-end">
+          <span>${d.eng.toLocaleString()}</span>
+          <div class="tbl-bar" style="width:${barW}px"></div>
+        </div>
+      </td>
+      <td class="right">${d.pct}%</td>
+      <td class="right"><span class="tbl-delta ${dc}">${ar} ${sign}${d.delta}%</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════
+// RENDER LOCATIONS TABLE
+// ═══════════════════════════════════
+function renderLocations() {
+  const tbody = document.getElementById('locations-tbody');
+  tbody.innerHTML='';
+  LOCATIONS.forEach((l,i)=>{
+    const d = l[WIN];
+    const tr = document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td><td>${l.country}</td><td class="right">${d.eng.toLocaleString()}</td><td class="right">${d.pct}%</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════
+// RENDER DONUT (OVERVIEW)
+// ═══════════════════════════════════
+function renderDonut() {
+  const refs = REFERRERS[WIN];
+  const ctx = document.getElementById('donut-chart').getContext('2d');
+  if(charts.donut) charts.donut.destroy();
+  charts.donut = new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels: refs.map(r=>r.name),
+      datasets:[{ data:refs.map(r=>r.val), backgroundColor:refs.map(r=>r.color), borderWidth:2, borderColor:'#fff' }]
+    },
+    options:{ plugins:{legend:{display:false}}, cutout:'65%', responsive:true, maintainAspectRatio:false }
+  });
+  const leg = document.getElementById('donut-legend');
+  const total = refs.reduce((a,r)=>a+r.val,0);
+  leg.innerHTML = refs.map(r=>`
+    <div class="dl-item">
+      <div class="dl-left"><div class="dl-dot" style="background:${r.color}"></div><span class="dl-label">${r.name}</span></div>
+      <span class="dl-val">${r.val.toLocaleString()} <span style="color:var(--t3);font-weight:400">${(r.val/total*100).toFixed(0)}%</span></span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════
+// OVERVIEW CHART
+// ═══════════════════════════════════
+function updateOvChart() {
+  const w = W[WIN];
+  const d = KPI.totalEng[WIN];
+  document.getElementById('ov-chart-leg-curr').textContent = w.currentRange;
+  document.getElementById('ov-chart-leg-comp').textContent = w.compRange;
+  const ctx = document.getElementById('ov-chart').getContext('2d');
+  if(charts.ov) charts.ov.destroy();
+  charts.ov = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: w.chartLabels,
+      datasets:[
+        { label:'Current', data:d.chart.curr, backgroundColor:'rgba(31,114,238,0.85)', borderRadius:3, borderSkipped:false },
+        { label:'Comparison', data:d.chart.comp, backgroundColor:'rgba(193,213,252,0.6)', borderRadius:3, borderSkipped:false }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ title:i=>w.chartLabels[i[0].dataIndex], label:i=>(i.datasetIndex===0?`Current (${w.currentRange})`:` Comparison (${w.compRange})`)+': '+i.formattedValue }}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:10},color:'#97A0AF'}}, y:{grid:{color:'#F4F5F7'},ticks:{font:{size:10},color:'#97A0AF'},border:{display:false}} }
+    }
+  });
+}
+
+// ═══════════════════════════════════
+// INSIGHTS RENDER
+// ═══════════════════════════════════
+function renderInsights() {
+  const list = document.getElementById('insights-list');
+  const items = INSIGHTS[WIN];
+  const w = W[WIN];
+  list.innerHTML='';
+  items.forEach((ins,idx)=>{
+    const div = document.createElement('div');
+    div.className='ic'+(idx===0?' open':'');
+    div.innerHTML=`
+      <div class="ic-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="ic-icon-wrap ${ins.dir}">${ins.icon}</div>
+        <div class="ic-title-wrap">
+          <div class="ic-title">${ins.title}</div>
+          <span class="ic-window-tag">${ins.tag}</span>
+        </div>
+        <span class="ic-chevron">▼</span>
+      </div>
+      <div class="ic-body">
+        <p class="ic-body-text">${ins.body(w)}</p>
+        <div class="ic-rec"><div class="ic-rec-label">💡 Recommendation</div><div class="ic-rec-text">${ins.rec}</div></div>
+        <hr class="ic-divider">
+        <div class="ic-stats-row">
+          ${ins.stats.map(s=>`<div class="ic-stat"><div class="ic-stat-label">${s.l}</div><div class="ic-stat-value">${s.v}</div>${s.p?`<div class="ic-stat-period">${s.p}</div>`:''}</div>`).join('')}
+        </div>
+        <button class="ic-action" onclick="nav('detail',LINKS[0])">${ins.action} →</button>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════
+// INSIGHTS CHART
+// ═══════════════════════════════════
+function updateInsChart() {
+  const w = W[WIN];
+  const d = KPI.totalEng[WIN];
+  document.getElementById('ins-leg-curr').textContent = w.currentRange+' (current)';
+  document.getElementById('ins-leg-comp').textContent = w.compRange+' (comparison)';
+  if(WIN==='7d') document.getElementById('ins-chart-title').textContent='Daily performance — current vs comparison';
+  else document.getElementById('ins-chart-title').textContent='5-day period performance — current vs comparison';
+
+  const ctx = document.getElementById('ins-chart').getContext('2d');
+  if(charts.ins) charts.ins.destroy();
+  charts.ins = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels: w.chartLabels,
+      datasets:[
+        { label:'Current', data:d.chart.curr, borderColor:'#1F72EE', backgroundColor:'rgba(31,114,238,.1)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:'#1F72EE', borderWidth:2.5 },
+        { label:'Comparison', data:d.chart.comp, borderColor:'#93B8F8', backgroundColor:'rgba(147,184,248,.05)', fill:false, tension:.3, pointRadius:3, pointBackgroundColor:'#93B8F8', borderWidth:2, borderDash:[5,4] }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ title:i=>w.chartLabels[i[0].dataIndex], label:i=>(i.datasetIndex===0?`Current (${w.currentRange})`:` Comparison (${w.compRange})`)+': '+i.formattedValue }}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:10},color:'#97A0AF'}}, y:{grid:{color:'#F4F5F7'},ticks:{font:{size:10},color:'#97A0AF'},border:{display:false}} }
+    }
+  });
+}
+
+// ═══════════════════════════════════
+// DETAIL RENDER
+// ═══════════════════════════════════
+function renderDetail() {
+  const w = W[WIN];
+  const ld = SELECTED_LINK;
+  const d = ld[WIN];
+
+  document.getElementById('det-link-title').textContent = ld.title.replace('…','');
+  document.getElementById('det-link-url').textContent = 'bit.ly/'+ld.slug;
+
+  const currVal = d.eng;
+  const prevVal = Math.round(currVal/(1+d.delta/100));
+  document.getElementById('det-total').textContent = currVal.toLocaleString();
+  document.getElementById('det-current-val').textContent = currVal.toLocaleString();
+  document.getElementById('det-prior-val').textContent = prevVal.toLocaleString();
+  document.getElementById('det-curr-period-label').textContent = w.currentRange;
+  document.getElementById('det-comp-period-label').textContent = w.compRange;
+  document.getElementById('det-pc-curr-val').textContent = currVal.toLocaleString();
+  document.getElementById('det-pc-comp-val').textContent = prevVal.toLocaleString();
+  document.getElementById('det-pc-curr-date').textContent = w.currentRange;
+  document.getElementById('det-pc-comp-date').textContent = w.compRange;
+  document.getElementById('det-comp-strong').textContent = w.compRange;
+  document.getElementById('det-comp-window').textContent = w.windowLabel;
+
+  const isUp = d.dir==='up';
+  const badge = document.getElementById('det-delta-badge');
+  badge.textContent = (isUp?'↑ +':'↓ –')+Math.abs(d.delta)+'%';
+  badge.className='dlc-kpi-delta '+(isUp?'up':'down');
+
+  document.getElementById('det-leg-curr').textContent = w.currentRange+' (current)';
+  document.getElementById('det-leg-comp').textContent = w.compRange+' (comparison)';
+  document.getElementById('det-curr-range').textContent = w.currentRange;
+  document.getElementById('det-comp-range').textContent = w.compRange;
+  document.getElementById('det-win-label').textContent = w.windowLabel;
+
+  if(WIN==='7d') document.getElementById('det-chart-title').textContent='Daily engagements — current vs comparison';
+  else document.getElementById('det-chart-title').textContent='5-day period engagements — current vs comparison';
+
+  // Scale the link-level chart data proportionally
+  const totalD = KPI.totalEng[WIN];
+  const ratio = currVal / totalD.chart.curr.reduce((a,b)=>a+b,0);
+  const currChart = totalD.chart.curr.map(v=>Math.round(v*ratio));
+  const compChart = totalD.chart.comp.map(v=>Math.round(v*ratio));
+
+  const ctx = document.getElementById('det-chart').getContext('2d');
+  if(charts.det) charts.det.destroy();
+  charts.det = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: w.chartLabels,
+      datasets:[
+        { label:'Current', data:currChart, backgroundColor:'rgba(31,114,238,0.88)', borderRadius:4, borderSkipped:false },
+        { label:'Comparison', data:compChart, backgroundColor:'rgba(193,213,252,0.55)', borderRadius:4, borderSkipped:false,
+          borderWidth:1, borderColor:'rgba(147,184,248,0.6)' }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{
+          title:i=>`${w.chartLabels[i[0].dataIndex]}`,
+          beforeBody:()=>'',
+          label:i=>{
+            const period = i.datasetIndex===0 ? w.currentRange : w.compRange;
+            return ` ${period}: ${i.formattedValue} engagements`;
+          }
+        }}
+      },
+      scales:{ x:{grid:{display:false},ticks:{font:{size:11},color:'#97A0AF'}}, y:{grid:{color:'#F4F5F7'},ticks:{font:{size:11},color:'#97A0AF'},border:{display:false}} }
+    }
+  });
+
+  // Detail donut
+  const refs = REFERRERS[WIN];
+  const ctx2 = document.getElementById('det-donut').getContext('2d');
+  if(charts.detDonut) charts.detDonut.destroy();
+  charts.detDonut = new Chart(ctx2,{
+    type:'doughnut',
+    data:{ labels:refs.map(r=>r.name), datasets:[{ data:refs.map(r=>Math.round(r.val*ratio)), backgroundColor:refs.map(r=>r.color), borderWidth:2, borderColor:'#fff' }] },
+    options:{ plugins:{legend:{display:false}}, cutout:'65%', responsive:true, maintainAspectRatio:false }
+  });
+  const total2 = refs.reduce((a,r)=>a+Math.round(r.val*ratio),0);
+  document.getElementById('det-donut-legend').innerHTML = refs.map(r=>{
+    const v = Math.round(r.val*ratio);
+    return `<div class="dl-item"><div class="dl-left"><div class="dl-dot" style="background:${r.color}"></div><span class="dl-label">${r.name}</span></div><span class="dl-val">${v} <span style="color:var(--t3);font-weight:400">${(v/total2*100).toFixed(0)}%</span></span></div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+function init(){
+  updateCtxBanners();
+  renderKPIs();
+  renderLinks();
+  renderLocations();
+  renderDonut();
+  updateOvChart();
+  renderInsights();
+  updateInsChart();
+}
+init();
+</script>
+</body>
+</html>

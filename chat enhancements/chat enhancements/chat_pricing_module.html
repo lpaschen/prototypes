@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitly Assist — Chat Enhancement Concepts</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f2f5;
+    color: #1a1a2e;
+  }
+
+  /* ── Top nav ── */
+  .top-nav {
+    background: #fff;
+    border-bottom: 1px solid #e2e4e9;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .top-nav .logo {
+    font-size: 22px;
+    font-weight: 800;
+    color: #ee6123;
+    letter-spacing: -0.5px;
+    margin-right: 24px;
+  }
+  .scenario-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .scenario-tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1.5px solid #e2e4e9;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .scenario-tab:hover { border-color: #ee6123; color: #ee6123; }
+  .scenario-tab.active {
+    background: #ee6123;
+    border-color: #ee6123;
+    color: #fff;
+  }
+  .badge {
+    margin-left: 6px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 11px;
+  }
+  .scenario-tab:not(.active) .badge {
+    background: #f3f4f6;
+    color: #9ca3af;
+  }
+
+  /* ── Annotation banner ── */
+  .annotation-banner {
+    background: #fef3c7;
+    border-bottom: 1px solid #fde68a;
+    padding: 8px 32px;
+    font-size: 12px;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .annotation-banner strong { font-weight: 600; }
+
+  /* ── Layout ── */
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr 300px;
+    height: calc(100vh - 57px - 37px);
+    overflow: hidden;
+  }
+
+  /* ── Left sidebar — App nav ── */
+  .app-sidebar {
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 20px 16px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .sidebar-header .plan-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(238,97,35,0.15);
+    border: 1px solid rgba(238,97,35,0.3);
+    color: #ee6123;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .usage-row {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    margin-top: 4px;
+  }
+  .usage-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .usage-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: #22c55e;
+    transition: width 0.3s;
+  }
+  .usage-fill.warn { background: #f59e0b; }
+  .usage-fill.danger { background: #ef4444; }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 12px 8px;
+    overflow-y: auto;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.85); }
+  .nav-item.active { background: rgba(238,97,35,0.15); color: #fff; }
+  .nav-icon { width: 16px; text-align: center; font-size: 14px; opacity: 0.7; }
+
+  /* ── Chat panel ── */
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-left: 1px solid #e2e4e9;
+    border-right: 1px solid #e2e4e9;
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f2f5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ai-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #ee6123, #f59e0b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #fff;
+    font-weight: 700;
+  }
+  .chat-header-title { font-size: 14px; font-weight: 600; }
+  .chat-header-sub { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e;
+    margin-left: auto;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── Message bubbles ── */
+  .msg { display: flex; gap: 10px; max-width: 100%; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    flex-shrink: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 600;
+    margin-top: 2px;
+  }
+  .msg.ai .msg-avatar { background: linear-gradient(135deg, #ee6123, #f59e0b); color: #fff; }
+  .msg.user .msg-avatar { background: #e0e7ff; color: #4f46e5; }
+
+  .msg-body { max-width: 82%; display: flex; flex-direction: column; gap: 6px; }
+  .msg.user .msg-body { align-items: flex-end; }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  .msg.ai .bubble {
+    background: #f8f9fb;
+    border: 1px solid #e8eaed;
+    border-top-left-radius: 4px;
+    color: #1f2937;
+  }
+  .msg.user .bubble {
+    background: #ee6123;
+    color: #fff;
+    border-top-right-radius: 4px;
+  }
+  .bubble p + p { margin-top: 6px; }
+  .bubble ul { padding-left: 18px; margin-top: 4px; }
+  .bubble li { margin-bottom: 3px; }
+  .bubble strong { font-weight: 600; }
+  .bubble .inline-code {
+    background: rgba(0,0,0,0.06);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: monospace;
+    font-size: 12px;
+  }
+  .msg.user .bubble .inline-code {
+    background: rgba(255,255,255,0.2);
+  }
+
+  /* ── Upgrade CTA card ── */
+  .upgrade-cta {
+    background: linear-gradient(135deg, #fff7ed, #fff);
+    border: 1.5px solid #fed7aa;
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 2px;
+  }
+  .upgrade-cta .cta-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #ea580c;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .upgrade-cta .cta-headline {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+  }
+  .upgrade-cta .cta-sub {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+  .cta-btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .cta-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .cta-btn.primary {
+    background: #ee6123;
+    color: #fff;
+  }
+  .cta-btn.primary:hover { background: #d4521a; }
+  .cta-btn.secondary {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .cta-btn.secondary:hover { background: #e5e7eb; }
+
+  /* ── Plan comparison card ── */
+  .plan-compare {
+    background: #fff;
+    border: 1.5px solid #e2e4e9;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 2px;
+  }
+  .plan-compare-header {
+    background: #f8f9fb;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    border-bottom: 1px solid #e2e4e9;
+  }
+  .plan-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 1px solid #f0f2f5;
+  }
+  .plan-col {
+    padding: 12px 14px;
+    border-right: 1px solid #f0f2f5;
+  }
+  .plan-col:last-child { border-right: none; }
+  .plan-col.current { background: #fff7ed; }
+  .plan-col.highlight { background: #f0fdf4; }
+  .plan-name {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #9ca3af;
+    margin-bottom: 4px;
+  }
+  .plan-col.current .plan-name { color: #ea580c; }
+  .plan-col.highlight .plan-name { color: #16a34a; }
+  .plan-price {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1f2937;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .plan-price span {
+    font-size: 11px;
+    font-weight: 400;
+    color: #9ca3af;
+  }
+  .plan-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 12px;
+    color: #4b5563;
+    margin-bottom: 3px;
+    line-height: 1.4;
+  }
+  .plan-feature .check { color: #22c55e; font-size: 11px; margin-top: 1px; }
+  .plan-feature .cross { color: #d1d5db; font-size: 11px; margin-top: 1px; }
+  .plan-feature .highlight-text { color: #ee6123; font-weight: 600; }
+  .current-badge {
+    display: inline-block;
+    background: #fed7aa;
+    color: #ea580c;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 6px;
+  }
+  .plan-compare-footer {
+    padding: 10px 14px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* ── Usage warning card ── */
+  .usage-warning {
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 2px;
+  }
+  .usage-warning .uw-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 8px;
+  }
+  .usage-warning .uw-bar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 4px;
+  }
+  .uw-bar {
+    height: 6px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .uw-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: #f59e0b;
+  }
+  .uw-fill.full { background: #ef4444; }
+  .usage-warning .uw-sub {
+    font-size: 11.5px;
+    color: #78350f;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  /* ── Feature gate card ── */
+  .feature-gate {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 2px;
+  }
+  .feature-gate .fg-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lock-icon {
+    width: 18px; height: 18px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .feature-gate .fg-desc {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .tier-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .tier-pill {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1.5px solid;
+  }
+  .tier-pill.locked { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+  .tier-pill.unlocked { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+  .tier-pill.current-locked { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
+
+  /* ── Typing indicator ── */
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 10px 14px;
+    background: #f8f9fb;
+    border: 1px solid #e8eaed;
+    border-radius: 14px;
+    border-top-left-radius: 4px;
+    width: fit-content;
+  }
+  .typing-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #9ca3af;
+    animation: bounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
+  }
+
+  /* ── Chat input ── */
+  .chat-input-area {
+    padding: 14px 16px;
+    border-top: 1px solid #f0f2f5;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .chat-input {
+    flex: 1;
+    border: 1.5px solid #e2e4e9;
+    border-radius: 12px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: #374151;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.4;
+    max-height: 100px;
+    transition: border-color 0.15s;
+  }
+  .chat-input:focus { border-color: #ee6123; }
+  .send-btn {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: #ee6123;
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { background: #d4521a; }
+  .send-btn:disabled { background: #e5e7eb; cursor: default; }
+
+  /* ── Annotation sidebar ── */
+  .annotation-panel {
+    background: #fff;
+    border-left: 1px solid #e2e4e9;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .ann-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #9ca3af;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ann-card {
+    background: #f8f9fb;
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 12px;
+    color: #374151;
+    line-height: 1.55;
+  }
+  .ann-card + .ann-card { margin-top: 8px; }
+  .ann-card .ann-tag {
+    display: inline-block;
+    background: #e0e7ff;
+    color: #4338ca;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+  }
+  .ann-card .ann-tag.green { background: #dcfce7; color: #16a34a; }
+  .ann-card .ann-tag.orange { background: #ffedd5; color: #ea580c; }
+  .ann-card .ann-tag.red { background: #fee2e2; color: #dc2626; }
+  .ann-card .ann-tag.gray { background: #f3f4f6; color: #6b7280; }
+  .ann-card strong { font-weight: 600; color: #1f2937; }
+
+  .open-q {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 12px;
+    color: #78350f;
+    line-height: 1.55;
+  }
+  .open-q + .open-q { margin-top: 8px; }
+  .open-q .q-num {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #92400e;
+  }
+
+  /* ── Scenario visibility ── */
+  .scenario { display: none; }
+  .scenario.active { display: contents; }
+
+  .msg-group { display: flex; flex-direction: column; gap: 16px; }
+
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<div class="top-nav">
+  <div class="logo">bitly</div>
+  <div class="scenario-tabs">
+    <button class="scenario-tab active" onclick="showScenario('explicit')">
+      Explicit Plan Question <span class="badge">A</span>
+    </button>
+    <button class="scenario-tab" onclick="showScenario('gated')">
+      Gated Feature Request <span class="badge">B</span>
+    </button>
+    <button class="scenario-tab" onclick="showScenario('limit')">
+      Near Usage Limit <span class="badge">C</span>
+    </button>
+    <button class="scenario-tab" onclick="showScenario('limit-hit')">
+      Limit Reached <span class="badge">D</span>
+    </button>
+  </div>
+</div>
+
+<!-- Annotation banner -->
+<div class="annotation-banner" id="ann-banner">
+  <strong>Scenario A:</strong> User explicitly asks what their plan includes. AI surfaces current limits, compares tiers, and embeds a structured upgrade CTA (Option 2 — frontend-rendered component).
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Left: App sidebar -->
+  <div class="app-sidebar">
+    <div class="sidebar-header">
+      <div class="plan-chip">⭐ Core Plan</div>
+      <div class="usage-row">Links this month</div>
+      <div class="usage-bar"><div class="usage-fill" id="link-bar" style="width:68%"></div></div>
+      <div class="usage-row" style="display:flex;justify-content:space-between;">
+        <span id="link-count">68 / 100 used</span>
+        <span style="color:#f59e0b" id="link-pct">68%</span>
+      </div>
+      <div class="usage-row" style="margin-top:8px">QR codes</div>
+      <div class="usage-bar"><div class="usage-fill" id="qr-bar" style="width:25%"></div></div>
+      <div class="usage-row" style="display:flex;justify-content:space-between;">
+        <span id="qr-count">5 / 20 used</span>
+        <span id="qr-pct">25%</span>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-item">
+        <span class="nav-icon">🏠</span> Dashboard
+      </div>
+      <div class="nav-item active">
+        <span class="nav-icon">🔗</span> Links
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">📊</span> Analytics
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">⬛</span> QR Codes
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">📁</span> Campaigns
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">⚙️</span> Settings
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: Chat -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="ai-avatar">B</div>
+      <div>
+        <div class="chat-header-title">Bitly Assist</div>
+        <div class="chat-header-sub">AI-powered help</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+
+      <!-- ════ SCENARIO A: Explicit plan question ════ -->
+      <div class="scenario active" id="scenario-explicit">
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Hi! I'm Bitly Assist. I can help you shorten links, understand your analytics, manage QR codes, and answer questions about your account. What can I help with?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">What does my current plan include? And what would I get if I upgraded?</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>You're on the <strong>Core plan</strong>. Here's a breakdown of what's included and how it compares to Growth:</p>
+            </div>
+
+            <!-- Plan comparison card — frontend-rendered component -->
+            <div class="plan-compare">
+              <div class="plan-compare-header">Plan Comparison</div>
+              <div class="plan-grid">
+                <div class="plan-col">
+                  <div class="plan-name">Free</div>
+                  <div class="plan-price">$0 <span>/ mo</span></div>
+                  <div class="plan-feature"><span class="check">✓</span> 10 links/mo</div>
+                  <div class="plan-feature"><span class="cross">✗</span> Custom domains</div>
+                  <div class="plan-feature"><span class="cross">✗</span> QR codes</div>
+                  <div class="plan-feature"><span class="cross">✗</span> Link redirects</div>
+                  <div class="plan-feature"><span class="cross">✗</span> Advanced analytics</div>
+                </div>
+                <div class="plan-col current">
+                  <div class="plan-name">Core</div>
+                  <div class="plan-price">$8 <span>/ mo</span></div>
+                  <div class="plan-feature"><span class="check">✓</span> <span class="highlight-text">100 links/mo</span></div>
+                  <div class="plan-feature"><span class="check">✓</span> 1 custom domain</div>
+                  <div class="plan-feature"><span class="check">✓</span> 20 QR codes</div>
+                  <div class="plan-feature"><span class="cross">✗</span> Link redirects</div>
+                  <div class="plan-feature"><span class="cross">✗</span> Advanced analytics</div>
+                  <div class="current-badge">Your plan</div>
+                </div>
+                <div class="plan-col highlight">
+                  <div class="plan-name">Growth</div>
+                  <div class="plan-price">$29 <span>/ mo</span></div>
+                  <div class="plan-feature"><span class="check">✓</span> <span style="color:#16a34a;font-weight:600">500 links/mo</span></div>
+                  <div class="plan-feature"><span class="check">✓</span> 3 custom domains</div>
+                  <div class="plan-feature"><span class="check">✓</span> 100 QR codes</div>
+                  <div class="plan-feature"><span class="check">✓</span> <span style="color:#16a34a;font-weight:600">Link redirects</span></div>
+                  <div class="plan-feature"><span class="check">✓</span> <span style="color:#16a34a;font-weight:600">Advanced analytics</span></div>
+                </div>
+              </div>
+              <div class="plan-compare-footer">
+                <button class="cta-btn secondary">View all plans</button>
+                <button class="cta-btn primary">Upgrade to Growth →</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">How many links have I used so far this month?</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>You've used <strong>68 out of 100 links</strong> this month — that's 68% of your Core plan limit. Your month resets on April 1.</p>
+              <p>At your current pace you'll reach the limit in about <strong>9 days</strong>. Growth gives you 500 links/month if you want headroom.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- end scenario A -->
+
+
+      <!-- ════ SCENARIO B: Gated feature request ════ -->
+      <div class="scenario" id="scenario-gated">
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Hi! I'm Bitly Assist. What can I help with today?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">How do I set up a redirect so that when someone clicks my old link it forwards to a new URL?</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Link redirects let you change the destination URL of an existing Bitly link without breaking it — anyone who already has the short link will be sent to the new destination automatically.</p>
+              <p>This feature is available on <strong>Growth and above</strong>. Here's how to set it up once you have access:</p>
+              <ul>
+                <li>Open the link in your dashboard</li>
+                <li>Click <span class="inline-code">Edit link</span></li>
+                <li>Update the <strong>Destination URL</strong> and save</li>
+              </ul>
+            </div>
+
+            <!-- Feature gate card -->
+            <div class="feature-gate">
+              <div class="fg-title">
+                <div class="lock-icon">🔒</div>
+                Link Redirects
+              </div>
+              <div class="fg-desc">Update a short link's destination URL at any time without changing the Bitly link itself. Great for campaigns, seasonal pages, or fixing broken URLs.</div>
+              <div class="tier-pills">
+                <div class="tier-pill locked">Free</div>
+                <div class="tier-pill current-locked">Core — your plan</div>
+                <div class="tier-pill unlocked">✓ Growth</div>
+                <div class="tier-pill unlocked">✓ Premium</div>
+              </div>
+              <div class="cta-btn-row">
+                <button class="cta-btn secondary">Learn more</button>
+                <button class="cta-btn primary">Upgrade to Growth →</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">Is there a way to do this without upgrading?</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Not directly — link redirects require Growth or higher. The workaround on Core is to create a new short link with the updated destination and retire the old one, but that means sharing the new URL again.</p>
+              <p>If you rely on links staying stable over time (printed materials, email campaigns), Growth's redirect feature is worth it.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- end scenario B -->
+
+
+      <!-- ════ SCENARIO C: Near usage limit (proactive) ════ -->
+      <div class="scenario" id="scenario-limit">
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Hi! I'm Bitly Assist. What can I help with today?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">Can you help me shorten this URL for a campaign we're running next week?</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Of course! Paste the URL you'd like to shorten and I'll walk you through it.</p>
+              <p>Just a heads-up before you go — you're <strong>close to your monthly link limit</strong>:</p>
+            </div>
+
+            <!-- Usage warning card — proactive surfacing -->
+            <div class="usage-warning">
+              <div class="uw-header">⚠️ Approaching link limit</div>
+              <div class="uw-bar-row">
+                <span>Links used this month</span>
+                <span style="font-weight:600;color:#92400e">88 / 100</span>
+              </div>
+              <div class="uw-bar"><div class="uw-fill" style="width:88%"></div></div>
+              <div class="uw-sub">You have <strong>12 links remaining</strong> for March. If you're running a campaign next week, you may hit the limit before the month resets on April 1.</div>
+              <div class="cta-btn-row">
+                <button class="cta-btn secondary">Not now</button>
+                <button class="cta-btn primary">Upgrade for 500 links/mo →</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">Thanks for the heads up. I'll keep that in mind. Here's the URL: https://www.example.com/spring-sale-2026</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Your shortened link is ready: <span class="inline-code">bit.ly/spring26</span></p>
+              <p>You now have <strong>11 links remaining</strong> this month. Want to add a custom back-half or UTM parameters before you share it?</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- end scenario C -->
+
+
+      <!-- ════ SCENARIO D: Limit hit ════ -->
+      <div class="scenario" id="scenario-limit-hit">
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Hi! I'm Bitly Assist. What can I help with today?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">I'm trying to create a new short link but it's not working — I keep getting an error.</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>I can see what's happening — you've <strong>reached your 100-link limit</strong> for March on your Core plan. New links can't be created until either:</p>
+              <ul>
+                <li>Your plan resets on <strong>April 1</strong> (8 days away), or</li>
+                <li>You upgrade to Growth, which gives you <strong>500 links/month</strong></li>
+              </ul>
+            </div>
+
+            <div class="upgrade-cta">
+              <div class="cta-label">🔴 Monthly limit reached</div>
+              <div class="cta-headline">You've used all 100 links for this month</div>
+              <div class="cta-sub">Upgrade to Growth to get 500 links/month, link redirects, advanced analytics, and 3 custom domains — starting at $29/mo.</div>
+              <div class="cta-btn-row">
+                <button class="cta-btn primary">Upgrade to Growth — $29/mo →</button>
+                <button class="cta-btn secondary">Wait until April 1</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-avatar">LP</div>
+          <div class="msg-body">
+            <div class="bubble">What if I delete some old links — does that free up space?</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="msg-avatar">B</div>
+          <div class="msg-body">
+            <div class="bubble">
+              <p>Unfortunately no — deleting links doesn't restore your monthly allocation. The 100-link limit counts how many links were <em>created</em> in the billing period, not how many are currently active.</p>
+              <p>Your only options are to wait for the April 1 reset or upgrade to a higher plan.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- end scenario D -->
+
+    </div><!-- /chat-messages -->
+
+    <div class="chat-input-area">
+      <textarea class="chat-input" placeholder="Ask Bitly Assist anything…" rows="1"></textarea>
+      <button class="send-btn">↑</button>
+    </div>
+  </div><!-- /chat-panel -->
+
+  <!-- Right: Annotation panel -->
+  <div class="annotation-panel">
+
+    <!-- Scenario A annotations -->
+    <div class="scenario active" id="ann-explicit">
+      <div>
+        <div class="ann-section-title">📐 Design decisions</div>
+        <div class="ann-card">
+          <div class="ann-tag orange">Tier context</div>
+          <p>AI is given the user's current plan, usage, and full tier comparison at prompt time. It only surfaces the comparison when explicitly asked — not on every message.</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag">In-app link strategy</div>
+          <p><strong>Option 2 (Structured signal):</strong> The API returns a <span style="font-family:monospace;font-size:11px;background:#f3f4f6;padding:1px 4px;border-radius:3px">plan_cta</span> field alongside the message text. The frontend renders the plan comparison card as a native UI component — not embedded in the AI text.</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag green">Benefit</div>
+          <p>The AI response stays readable in any context (API consumers, mobile, email). The card only appears in-product.</p>
+        </div>
+      </div>
+      <div>
+        <div class="ann-section-title">❓ Open questions</div>
+        <div class="open-q">
+          <div class="q-num">Q1</div>
+          Should the full tier comparison show when the user asks about their plan, or only a delta ("here's what you'd gain")? A delta is less overwhelming but may miss context.
+        </div>
+        <div class="open-q">
+          <div class="q-num">Q2</div>
+          Should pricing appear in the AI response text, or only in the frontend-rendered card? Pricing can change — a card sourced from the billing API stays accurate.
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario B annotations -->
+    <div class="scenario" id="ann-gated">
+      <div>
+        <div class="ann-section-title">📐 Design decisions</div>
+        <div class="ann-card">
+          <div class="ann-tag orange">Feature gate card</div>
+          <p>When a user asks about a gated feature, the AI explains what it does and how to use it — then a feature gate card is rendered showing exactly which tiers unlock it.</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag">Tone</div>
+          <p>The AI still explains the feature fully, rather than blocking with "you can't do that." Users deserve to understand what they're being asked to pay for.</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag green">Workaround</div>
+          <p>When a workaround exists, the AI surfaces it honestly — even if it's a friction point. This builds trust rather than pushing the upgrade hard.</p>
+        </div>
+      </div>
+      <div>
+        <div class="ann-section-title">❓ Open questions</div>
+        <div class="open-q">
+          <div class="q-num">Q1</div>
+          Should the feature gate card always show all tiers, or just the user's current tier and the next tier up? Showing all tiers could cause noise.
+        </div>
+        <div class="open-q">
+          <div class="q-num">Q2</div>
+          If a user asks about multiple gated features in one conversation, should we show a gate card each time? Might feel pushy — consider showing only once per session.
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario C annotations -->
+    <div class="scenario" id="ann-limit">
+      <div>
+        <div class="ann-section-title">📐 Design decisions</div>
+        <div class="ann-card">
+          <div class="ann-tag orange">Proactive threshold</div>
+          <p>Warning is triggered when usage is ≥80% of the monthly cap. This fires once per session — not on every message — to avoid fatigue.</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag">Context-aware</div>
+          <p>The AI detected the user was about to create a link (a usage-consuming action) and surfaced the warning <em>before</em> the creation step — giving them a chance to upgrade first.</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag green">Not blocking</div>
+          <p>The warning is informational, not a gate. The user can dismiss it and still create the link. This respects user autonomy.</p>
+        </div>
+      </div>
+      <div>
+        <div class="ann-section-title">❓ Open questions</div>
+        <div class="open-q">
+          <div class="q-num">Q1</div>
+          Should the proactive warning fire at 80% or only when fewer than N links remain (e.g., &lt;10 links)? A percentage may be misleading for users on large plans.
+        </div>
+        <div class="open-q">
+          <div class="q-num">Q2</div>
+          What's the right suppression logic? "Once per session" may be too frequent if the user is creating many links in a session.
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario D annotations -->
+    <div class="scenario" id="ann-limit-hit">
+      <div>
+        <div class="ann-section-title">📐 Design decisions</div>
+        <div class="ann-card">
+          <div class="ann-tag red">Hard limit</div>
+          <p>When the limit is already hit, the AI explains the error immediately and unambiguously — no guessing, no generic "something went wrong."</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag orange">Two clear paths</div>
+          <p>The upgrade CTA offers both options: upgrade now, or wait for the reset. Users shouldn't feel forced — but both paths are surfaced clearly.</p>
+        </div>
+        <div class="ann-card">
+          <div class="ann-tag">Accurate info</div>
+          <p>The AI correctly explained that deleting links doesn't restore quota — this is the kind of accurate entitlement knowledge the system prompt change enables.</p>
+        </div>
+      </div>
+      <div>
+        <div class="ann-section-title">❓ Open questions</div>
+        <div class="open-q">
+          <div class="q-num">Q1</div>
+          Should the upgrade CTA include pricing ($29/mo) directly in the AI response? Or is that better left to the frontend card which can pull live pricing?
+        </div>
+        <div class="open-q">
+          <div class="q-num">Q2</div>
+          Should there be a way to request a one-time limit exception or overage purchase, rather than a full plan upgrade?
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /annotation-panel -->
+
+</div><!-- /main -->
+
+<script>
+  const scenarios = ['explicit', 'gated', 'limit', 'limit-hit'];
+  const banners = {
+    'explicit': '<strong>Scenario A:</strong> User explicitly asks what their plan includes. AI surfaces current limits, compares tiers, and embeds a structured upgrade CTA (Option 2 — frontend-rendered component).',
+    'gated': '<strong>Scenario B:</strong> User asks about a gated feature (link redirects). AI explains it fully, then shows a feature gate card with tier availability and an upgrade CTA.',
+    'limit': '<strong>Scenario C:</strong> User is at 88% of monthly link limit. AI proactively surfaces a usage warning before the user creates another link.',
+    'limit-hit': '<strong>Scenario D:</strong> User has hit their monthly limit and is seeing an error. AI diagnoses it accurately and provides two clear paths forward.'
+  };
+  const usageStates = {
+    'explicit': { linkW: '68%', linkCount: '68 / 100 used', linkPct: '68%', linkClass: 'warn', qrW: '25%', qrCount: '5 / 20 used', qrPct: '25%', qrClass: '' },
+    'gated':    { linkW: '68%', linkCount: '68 / 100 used', linkPct: '68%', linkClass: 'warn', qrW: '25%', qrCount: '5 / 20 used', qrPct: '25%', qrClass: '' },
+    'limit':    { linkW: '88%', linkCount: '88 / 100 used', linkPct: '88%', linkClass: 'warn', qrW: '25%', qrCount: '5 / 20 used', qrPct: '25%', qrClass: '' },
+    'limit-hit':{ linkW: '100%', linkCount: '100 / 100 used', linkPct: '100%', linkClass: 'danger', qrW: '25%', qrCount: '5 / 20 used', qrPct: '25%', qrClass: '' }
+  };
+
+  function showScenario(name) {
+    // Update tabs
+    document.querySelectorAll('.scenario-tab').forEach((t, i) => {
+      t.classList.toggle('active', scenarios[i] === name);
+    });
+
+    // Show/hide message scenarios
+    scenarios.forEach(s => {
+      const el = document.getElementById('scenario-' + s);
+      const ann = document.getElementById('ann-' + s);
+      if (el) el.classList.toggle('active', s === name);
+      if (ann) ann.classList.toggle('active', s === name);
+    });
+
+    // Update banner
+    document.getElementById('ann-banner').innerHTML = banners[name] || '';
+
+    // Update usage bar
+    const u = usageStates[name];
+    if (u) {
+      document.getElementById('link-bar').style.width = u.linkW;
+      document.getElementById('link-bar').className = 'usage-fill ' + u.linkClass;
+      document.getElementById('link-count').textContent = u.linkCount;
+      document.getElementById('link-pct').textContent = u.linkPct;
+      document.getElementById('link-pct').style.color = u.linkClass === 'danger' ? '#ef4444' : u.linkClass === 'warn' ? '#f59e0b' : '#22c55e';
+      document.getElementById('qr-bar').style.width = u.qrW;
+      document.getElementById('qr-count').textContent = u.qrCount;
+      document.getElementById('qr-pct').textContent = u.qrPct;
+    }
+
+    // Scroll chat to top
+    document.getElementById('chat-messages').scrollTop = 0;
+  }
+
+  // Textarea auto-resize
+  document.querySelector('.chat-input').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+  });
+</script>
+</body>
+</html>

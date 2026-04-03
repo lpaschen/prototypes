@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Link Performance</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+  <div id="app"></div>
+
+  <script>
+    // ── Mock Data ──────────────────────────────────────────────────────────
+
+    const DAYS = (() => {
+      const days = [];
+      const base = new Date('2026-03-09');
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(base);
+        d.setDate(d.getDate() - i);
+        const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+        days.push(`${m} ${d.getDate()}`);
+      }
+      return days;
+    })();
+
+    const mockLinks = [
+      { id:"1", name:"Summer Sale Homepage",   url:"bit.ly/summer-sale",  clicks:4821, uniqueClicks:3104, conversionRate:8.2,  tags:["email","paid"],       series:{ clicks:[210,280,340,390,420,380,460,510,490,540,580,620,580,640], uniqueClicks:[140,185,220,255,275,250,300,335,320,355,380,405,380,420] } },
+      { id:"2", name:"Product Launch CTA",     url:"bit.ly/launch-cta",   clicks:3290, uniqueClicks:2180, conversionRate:6.4,  tags:["social","paid"],      series:{ clicks:[120,180,220,260,290,310,280,320,350,330,360,380,400,420], uniqueClicks:[80,120,145,172,192,205,185,212,232,218,238,252,265,278] } },
+      { id:"3", name:"Referral Program",       url:"bit.ly/refer-friend", clicks:2140, uniqueClicks:1890, conversionRate:12.1, tags:["email","organic"],    series:{ clicks:[80,110,140,160,150,170,190,180,200,220,210,230,250,260],  uniqueClicks:[70,97,124,141,132,150,168,159,177,194,185,203,220,229] } },
+      { id:"4", name:"Blog Post — SEO Tips",   url:"bit.ly/seo-tips-24",  clicks:1870, uniqueClicks:1650, conversionRate:3.2,  tags:["organic","social"],   series:{ clicks:[60,90,110,130,140,150,160,170,155,165,175,185,190,200],  uniqueClicks:[53,79,97,115,123,132,141,150,137,145,154,163,168,176] } },
+      { id:"5", name:"Webinar Registration",   url:"bit.ly/webinar-q4",   clicks:1540, uniqueClicks:1420, conversionRate:18.5, tags:["email","landing"],    series:{ clicks:[40,60,80,100,120,140,130,145,155,140,130,120,110,100],  uniqueClicks:[37,55,74,92,111,129,120,134,143,129,120,111,101,92] } },
+      { id:"6", name:"Retargeting Ad",         url:"bit.ly/retarget-sp",  clicks:980,  uniqueClicks:720,  conversionRate:5.8,  tags:["paid","retargeting"], series:{ clicks:[30,45,55,65,75,80,85,90,95,85,80,75,70,65],   uniqueClicks:[22,33,40,48,55,59,62,66,70,62,59,55,51,48] } },
+      { id:"7", name:"Partner Newsletter",     url:"bit.ly/partner-nl",   clicks:760,  uniqueClicks:680,  conversionRate:7.9,  tags:["email","social"],     series:{ clicks:[25,35,45,50,55,60,65,70,65,60,55,50,45,40],  uniqueClicks:[22,31,40,45,49,54,58,63,58,54,49,45,40,36] } },
+      { id:"8", name:"App Store Promo",        url:"bit.ly/app-promo",    clicks:630,  uniqueClicks:580,  conversionRate:9.3,  tags:["paid","landing"],     series:{ clicks:[20,30,35,40,45,50,55,45,50,55,50,45,50,55],  uniqueClicks:[18,28,32,37,41,46,51,41,46,51,46,41,46,51] } },
+    ];
+
+    const COLORS = ["#4f46e5","#8b5cf6","#10b981","#f59e0b","#ef4444","#14b8a6"];
+
+    const TAG_COLORS = { email:"#3b82f6", paid:"#8b5cf6", organic:"#10b981", social:"#f59e0b", landing:"#ef4444", retargeting:"#14b8a6" };
+
+    const allTags = [...new Set(mockLinks.flatMap(l => l.tags))].sort();
+
+    function getTagSeries(tag, metric) {
+      const links = mockLinks.filter(l => l.tags.includes(tag));
+      return DAYS.map((_, i) => links.reduce((s, l) => s + l.series[metric][i], 0));
+    }
+    function getTagTotal(tag, metric) {
+      return mockLinks.filter(l => l.tags.includes(tag)).reduce((s, l) => s + l[metric], 0);
+    }
+    function fmt(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+
+    // ── State ─────────────────────────────────────────────────────────────
+
+    const state = { selectedIds:["1","3"], selectedTags:[], viewMode:"links", chartType:"line", metric:"clicks" };
+
+    // ── Chart rendering ───────────────────────────────────────────────────
+
+    function buildSVG(items, getSeries, getColor, chartType) {
+      if (!items.length) return `<div class="flex items-center justify-center h-64 text-slate-400 text-sm">Select items to compare</div>`;
+
+      const W=600, H=268, PL=50, PR=16, PT=14, PB=38;
+      const cW = W-PL-PR, cH = H-PT-PB;
+
+      const allSeries = items.map(getSeries);
+      const maxVal = Math.max(...allSeries.flat(), 1);
+
+      function xPos(i) { return PL + i * (cW / (DAYS.length-1)); }
+      function yPos(v) { return PT + cH - (v / maxVal) * cH; }
+
+      // Grid
+      const grid = [0,.25,.5,.75,1].map(f => {
+        const v = Math.round(f * maxVal);
+        const y = yPos(v).toFixed(1);
+        return `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>
+                <text x="${PL-6}" y="${+y+4}" text-anchor="end" font-size="10" fill="#94a3b8">${fmt(v)}</text>`;
+      }).join('');
+
+      // X labels
+      const xLabels = DAYS.map((d, i) => i % 2 !== 0 ? '' :
+        `<text x="${xPos(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" fill="#94a3b8">${d}</text>`
+      ).join('');
+
+      let dataLayer = '';
+      if (chartType === 'line') {
+        dataLayer = items.map((item, si) => {
+          const s = allSeries[si];
+          const color = getColor(item, si);
+          const path = s.map((v, i) => `${i===0?'M':'L'}${xPos(i).toFixed(1)},${yPos(v).toFixed(1)}`).join(' ');
+          const dots = s.map((v, i) => `<circle cx="${xPos(i).toFixed(1)}" cy="${yPos(v).toFixed(1)}" r="3" fill="${color}" stroke="white" stroke-width="1.5"/>`).join('');
+          return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+        }).join('');
+      } else {
+        const n = items.length;
+        const groupW = cW / DAYS.length;
+        const bw = Math.max(2, (groupW - 4) / n - 1);
+        dataLayer = items.map((item, si) => {
+          const s = allSeries[si];
+          const color = getColor(item, si);
+          return s.map((v, i) => {
+            const x = (PL + i * groupW + 2 + si * (bw + 1)).toFixed(1);
+            const bh = ((v / maxVal) * cH).toFixed(1);
+            const y = (PT + cH - parseFloat(bh)).toFixed(1);
+            return `<rect x="${x}" y="${y}" width="${bw.toFixed(1)}" height="${bh}" fill="${color}" rx="1"/>`;
+          }).join('');
+        }).join('');
+      }
+
+      return `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="height:268px">
+        ${grid}${xLabels}${dataLayer}
+      </svg>`;
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────────
+
+    function render() {
+      const { selectedIds, selectedTags, viewMode, chartType, metric } = state;
+
+      const totals = {
+        total: mockLinks.reduce((a,l)=>a+l.clicks,0),
+        unique: mockLinks.reduce((a,l)=>a+l.uniqueClicks,0),
+        avgConv: +(mockLinks.reduce((a,l)=>a+l.conversionRate,0)/mockLinks.length).toFixed(1),
+        links: mockLinks.length,
+      };
+
+      function metricCard(label, val, change) {
+        const up = change >= 0;
+        const changeHtml = change != null ? `
+          <span class="flex items-center gap-0.5 text-xs font-semibold ${up?'text-emerald-600':'text-red-500'}">
+            <svg class="h-3 w-3" viewBox="0 0 12 12" fill="currentColor">
+              ${up ? '<path d="M6 2l4 6H2z"/>' : '<path d="M6 10 2 4h8z"/>'}
+            </svg>${Math.abs(change)}%
+          </span>` : '';
+        return `<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <p class="text-xs text-slate-500 mb-1">${label}</p>
+          <div class="flex items-end justify-between gap-2">
+            <p class="text-2xl font-bold text-slate-800">${typeof val === 'number' ? val.toLocaleString() : val}</p>
+            ${changeHtml}
+          </div>
+        </div>`;
+      }
+
+      function toggle(active, ...cls) {
+        return active
+          ? 'bg-white text-slate-700 shadow-sm ' + (cls[0]||'')
+          : 'text-slate-500 hover:text-slate-700 ' + (cls[1]||'');
+      }
+
+      function metricToggle(side) {
+        return `<div class="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-100 p-0.5">
+          <button onclick="setMetric('clicks')" class="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${toggle(metric==='clicks')}">
+            <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zM2 8a6 6 0 1112 0A6 6 0 012 8z"/><path d="M8 5v3.5l2.5 1.5-.7 1.2L7 9.5V5h1z"/></svg>
+            Clicks
+          </button>
+          <button onclick="setMetric('uniqueClicks')" class="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${toggle(metric==='uniqueClicks')}">
+            <svg class="h-3 w-3" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="5" r="3"/><path d="M2 13c0-3 2.7-5 6-5s6 2 6 5"/></svg>
+            Unique
+          </button>
+        </div>`;
+      }
+
+      function chartTypeToggle() {
+        return `<div class="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-100 p-0.5">
+          <button onclick="setChartType('line')" class="rounded-md p-1.5 transition-colors ${toggle(chartType==='line')}" title="Line chart">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,13 5,7 9,10 15,3"/></svg>
+          </button>
+          <button onclick="setChartType('bar')" class="rounded-md p-1.5 transition-colors ${toggle(chartType==='bar')}" title="Bar chart">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="5" width="3" height="11" rx="1"/><rect x="6.5" y="2" width="3" height="14" rx="1"/><rect x="12" y="8" width="3" height="8" rx="1"/></svg>
+          </button>
+        </div>`;
+      }
+
+      // ── Links sidebar ───────────────────────────────────────────────────
+      const sidebarItems = mockLinks.map(link => {
+        const isSel = selectedIds.includes(link.id);
+        const ci = selectedIds.indexOf(link.id);
+        const color = ci >= 0 ? COLORS[ci] : null;
+        const dotStyle = color ? `background:${color};border-color:${color}` : 'border-color:#cbd5e1';
+        return `<div onclick="toggleLink('${link.id}')" class="flex items-center gap-3 rounded-lg px-2 py-2 cursor-pointer transition-colors hover:bg-slate-50 ${isSel?'bg-indigo-50':''}">
+          <div class="flex-shrink-0 h-3 w-3 rounded-full border-2" style="${dotStyle}"></div>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-medium text-slate-700 truncate">${link.name}</p>
+            <p class="text-xs text-slate-400 font-mono truncate">${link.url}</p>
+          </div>
+          <span class="text-xs text-slate-500 font-mono flex-shrink-0">${link[metric].toLocaleString()}</span>
+        </div>`;
+      }).join('');
+
+      const sidebar = `<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-700">Select Links</h2>
+          <span class="text-xs text-slate-400 font-mono">${selectedIds.length}/6</span>
+        </div>
+        <div class="space-y-0.5 overflow-y-auto" style="max-height:320px">${sidebarItems}</div>
+      </div>`;
+
+      // ── Comparison chart ────────────────────────────────────────────────
+      const selLinks = selectedIds.map(id => mockLinks.find(l=>l.id===id)).filter(Boolean);
+      const chartSVG = buildSVG(selectedIds, id => mockLinks.find(l=>l.id===id)?.series[metric]??[], (id,si)=>COLORS[selectedIds.indexOf(id)]||COLORS[si], chartType);
+
+      const linkLegend = selLinks.length ? `<div class="mt-3 flex flex-wrap gap-3">
+        ${selLinks.map((l,si)=>{
+          const c=COLORS[selectedIds.indexOf(l.id)];
+          return `<div class="flex items-center gap-1.5 text-xs text-slate-600">
+            <div class="h-2.5 w-2.5 rounded-full flex-shrink-0" style="background:${c}"></div>
+            <span class="truncate max-w-32">${l.name}</span>
+          </div>`;
+        }).join('')}
+      </div>` : '';
+
+      const chartArea = `<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
+          <h2 class="text-sm font-semibold text-slate-700">
+            ${selectedIds.length>0 ? `Comparing ${selectedIds.length} link${selectedIds.length>1?'s':''}` : 'Link Comparison'}
+          </h2>
+          <div class="flex items-center gap-2">
+            ${metricToggle()}${chartTypeToggle()}
+          </div>
+        </div>
+        ${chartSVG}${linkLegend}
+      </div>`;
+
+      // ── Tags view ───────────────────────────────────────────────────────
+      const tagChips = allTags.map(tag => {
+        const isSel = selectedTags.includes(tag);
+        const c = TAG_COLORS[tag]||'#64748b';
+        return `<button onclick="toggleTag('${tag}')" class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all border ${isSel?'text-white shadow-sm':'text-slate-600 border-slate-200 bg-white hover:bg-slate-50'}" style="${isSel?`background:${c};border-color:${c}`:''}">
+          <div class="h-2 w-2 rounded-full flex-shrink-0" style="background:${isSel?'rgba(255,255,255,0.5)':c}"></div>
+          ${tag}
+        </button>`;
+      }).join('');
+
+      let tagChart;
+      if (selectedTags.length > 0) {
+        tagChart = buildSVG(selectedTags, tag=>getTagSeries(tag,metric), tag=>TAG_COLORS[tag]||'#64748b', chartType);
+      } else {
+        const tagData = allTags.map(tag=>({ tag, val:getTagTotal(tag,metric) })).sort((a,b)=>b.val-a.val);
+        const maxV = Math.max(...tagData.map(t=>t.val),1);
+        tagChart = `<div class="space-y-3 mt-2">
+          ${tagData.map(t=>{
+            const c = TAG_COLORS[t.tag]||'#64748b';
+            const pct = (t.val/maxV*100).toFixed(1);
+            return `<div class="flex items-center gap-3">
+              <div class="w-20 text-right text-xs font-medium text-slate-600">${t.tag}</div>
+              <div class="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden">
+                <div class="h-full rounded-full flex items-center pl-2 text-xs text-white font-semibold transition-all" style="width:${pct}%;background:${c};min-width:${t.val>0?'44px':'0'}">
+                  ${t.val.toLocaleString()}
+                </div>
+              </div>
+              <div class="w-10 text-xs text-slate-400 text-right font-mono">${pct}%</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+
+      const tagLegend = selectedTags.length ? `<div class="mt-3 flex flex-wrap gap-3">
+        ${selectedTags.map(tag=>{
+          const c=TAG_COLORS[tag]||'#64748b';
+          return `<div class="flex items-center gap-1.5 text-xs text-slate-600">
+            <div class="h-2.5 w-2.5 rounded-full flex-shrink-0" style="background:${c}"></div>
+            <span>${tag}</span>
+          </div>`;
+        }).join('')}
+      </div>` : '';
+
+      const tagsView = `<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
+          <h2 class="text-sm font-semibold text-slate-700">Performance by Tag</h2>
+          <div class="flex items-center gap-2">
+            ${metricToggle()}
+            ${selectedTags.length>0 ? chartTypeToggle() : ''}
+          </div>
+        </div>
+        <p class="mb-4 text-xs text-slate-400">
+          ${selectedTags.length===0 ? 'Showing total clicks per tag. Select tags below to compare trends over time.' : 'Select up to 6 tags to compare their trends.'}
+        </p>
+        <div class="mb-5 flex flex-wrap gap-2">${tagChips}</div>
+        ${tagChart}
+        ${tagLegend}
+      </div>`;
+
+      // ── Full page ───────────────────────────────────────────────────────
+      document.getElementById('app').innerHTML = `
+        <div class="min-h-screen bg-slate-50">
+          <header class="border-b border-slate-200 bg-white px-6 py-4 sticky top-0 z-10">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
+                  <svg class="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div>
+                  <h1 class="text-lg font-semibold text-slate-800">Link Performance</h1>
+                  <p class="text-xs text-slate-400">Compare and analyze your links</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1">
+                <button onclick="setViewMode('links')" class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${toggle(viewMode==='links')}">Links</button>
+                <button onclick="setViewMode('tags')" class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${toggle(viewMode==='tags')}">Tags</button>
+              </div>
+            </div>
+          </header>
+
+          <div class="p-6 max-w-7xl mx-auto">
+            <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+              ${metricCard('Total Clicks', totals.total, 12.3)}
+              ${metricCard('Unique Clicks', totals.unique, 8.7)}
+              ${metricCard('Avg Conversion', totals.avgConv+'%', -1.2)}
+              ${metricCard('Active Links', totals.links, null)}
+            </div>
+
+            ${viewMode==='links' ? `
+              <div class="grid gap-6 lg:grid-cols-[280px_1fr]">
+                ${sidebar}
+                ${chartArea}
+              </div>
+            ` : tagsView}
+          </div>
+        </div>`;
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────
+
+    function toggleLink(id) {
+      if (state.selectedIds.includes(id)) state.selectedIds = state.selectedIds.filter(x=>x!==id);
+      else if (state.selectedIds.length < 6) state.selectedIds = [...state.selectedIds, id];
+      render();
+    }
+    function toggleTag(tag) {
+      if (state.selectedTags.includes(tag)) state.selectedTags = state.selectedTags.filter(t=>t!==tag);
+      else if (state.selectedTags.length < 6) state.selectedTags = [...state.selectedTags, tag];
+      render();
+    }
+    function setViewMode(m)  { state.viewMode = m;   render(); }
+    function setChartType(t) { state.chartType = t;  render(); }
+    function setMetric(m)    { state.metric = m;     render(); }
+
+    render();
+  </script>
+</body>
+</html>

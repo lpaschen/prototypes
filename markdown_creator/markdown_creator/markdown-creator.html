@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown File Creator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    .prose h1 { font-size: 1.875rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+    .prose p { margin-bottom: 0.75rem; line-height: 1.7; }
+    .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+    .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+    .prose li { margin-bottom: 0.25rem; line-height: 1.6; }
+    .prose code { background: #f1f5f9; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.875em; font-family: monospace; }
+    .prose pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: 0.75rem; }
+    .prose pre code { background: none; padding: 0; color: inherit; }
+    .prose blockquote { border-left: 4px solid #6366f1; padding-left: 1rem; color: #475569; margin: 0.75rem 0; font-style: italic; }
+    .prose a { color: #4f46e5; text-decoration: underline; }
+    .prose strong { font-weight: 700; }
+    .prose em { font-style: italic; }
+    .prose hr { border-color: #e2e8f0; margin: 1rem 0; }
+    .prose table { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+    .prose th { background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; font-weight: 600; }
+    .prose td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; }
+    textarea { resize: none; }
+    .tab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; }
+    .tab-inactive { border-bottom: 2px solid transparent; color: #64748b; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <span class="font-semibold text-slate-800 text-lg">Markdown Creator</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <input
+        id="filename"
+        type="text"
+        value="document"
+        placeholder="filename"
+        class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <span class="text-slate-400 text-sm">.md</span>
+      <button
+        id="downloadBtn"
+        onclick="downloadMarkdown()"
+        class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Download .md
+      </button>
+    </div>
+  </header>
+
+  <!-- Tabs + stats bar -->
+  <div class="bg-white border-b border-slate-200 px-6 flex items-center justify-between">
+    <div class="flex gap-6">
+      <button id="tab-edit" onclick="setTab('edit')" class="py-2.5 text-sm font-medium tab-active transition-colors">Edit</button>
+      <button id="tab-preview" onclick="setTab('preview')" class="py-2.5 text-sm font-medium tab-inactive transition-colors">Preview</button>
+      <button id="tab-split" onclick="setTab('split')" class="py-2.5 text-sm font-medium tab-inactive transition-colors">Split</button>
+    </div>
+    <div id="stats" class="text-xs text-slate-400 py-2.5">0 words · 0 chars</div>
+  </div>
+
+  <!-- Main editor area -->
+  <main id="main" class="flex h-[calc(100vh-105px)]">
+
+    <!-- Editor pane -->
+    <div id="editorPane" class="flex-1 flex flex-col">
+      <textarea
+        id="editor"
+        oninput="onEdit()"
+        placeholder="Paste or type your markdown here..."
+        class="flex-1 w-full p-6 font-mono text-sm text-slate-800 bg-white border-0 focus:outline-none focus:ring-0 leading-relaxed"
+      ></textarea>
+    </div>
+
+    <!-- Divider (split mode only) -->
+    <div id="divider" class="hidden w-px bg-slate-200"></div>
+
+    <!-- Preview pane -->
+    <div id="previewPane" class="hidden flex-1 overflow-y-auto bg-white border-l border-slate-200">
+      <div id="preview" class="prose max-w-none p-6 text-slate-800 text-sm"></div>
+    </div>
+
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none">
+    File downloaded!
+  </div>
+
+  <script>
+    let currentTab = 'edit';
+
+    function setTab(tab) {
+      currentTab = tab;
+
+      // Reset tab styles
+      ['edit', 'preview', 'split'].forEach(t => {
+        document.getElementById(`tab-${t}`).className = `py-2.5 text-sm font-medium tab-inactive transition-colors`;
+      });
+      document.getElementById(`tab-${tab}`).className = `py-2.5 text-sm font-medium tab-active transition-colors`;
+
+      const editorPane = document.getElementById('editorPane');
+      const previewPane = document.getElementById('previewPane');
+      const divider = document.getElementById('divider');
+
+      if (tab === 'edit') {
+        editorPane.className = 'flex-1 flex flex-col';
+        previewPane.className = 'hidden flex-1 overflow-y-auto bg-white border-l border-slate-200';
+        divider.className = 'hidden w-px bg-slate-200';
+      } else if (tab === 'preview') {
+        editorPane.className = 'hidden flex-1 flex flex-col';
+        previewPane.className = 'flex-1 overflow-y-auto bg-white';
+        divider.className = 'hidden w-px bg-slate-200';
+        renderPreview();
+      } else {
+        editorPane.className = 'flex-1 flex flex-col';
+        previewPane.className = 'flex-1 overflow-y-auto bg-white border-l border-slate-200';
+        divider.className = 'block w-px bg-slate-200';
+        renderPreview();
+      }
+    }
+
+    function renderPreview() {
+      const src = document.getElementById('editor').value;
+      document.getElementById('preview').innerHTML = src
+        ? marked.parse(src)
+        : '<p class="text-slate-400 italic">Nothing to preview yet.</p>';
+    }
+
+    function onEdit() {
+      updateStats();
+      if (currentTab !== 'edit') renderPreview();
+    }
+
+    function updateStats() {
+      const text = document.getElementById('editor').value;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const chars = text.length;
+      document.getElementById('stats').textContent = `${words.toLocaleString()} word${words !== 1 ? 's' : ''} · ${chars.toLocaleString()} char${chars !== 1 ? 's' : ''}`;
+    }
+
+    function downloadMarkdown() {
+      const content = document.getElementById('editor').value;
+      const name = (document.getElementById('filename').value.trim() || 'document') + '.md';
+      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Downloaded as ' + name);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+    }
+
+    // Keyboard shortcut: Cmd/Ctrl+S to download
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        downloadMarkdown();
+      }
+    });
+
+    // Tab key inserts spaces in textarea instead of leaving
+    document.getElementById('editor').addEventListener('keydown', e => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const el = e.target;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        el.value = el.value.slice(0, start) + '  ' + el.value.slice(end);
+        el.selectionStart = el.selectionEnd = start + 2;
+        onEdit();
+      }
+    });
+  </script>
+</body>
+</html>
